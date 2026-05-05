@@ -9,15 +9,34 @@ class WsClient {
   private url: string = ''
   private reconnectAttempts = 0
   private intentionalClose = false
+  private pendingQueue: ClientMessage[] = []
+  private connectionTimeout: ReturnType<typeof setTimeout> | null = null
 
   connect(url: string): void {
     this.url = url
     this.intentionalClose = false
+    this.pendingQueue = []
     this.ws = new WebSocket(url)
+
+    // Give 3 seconds for connection, then fire failed for any queued messages
+    this.connectionTimeout = setTimeout(() => {
+      if (this.ws?.readyState !== WebSocket.OPEN) {
+        for (const _ of this.pendingQueue) {
+          this.dispatch('send_failed', { reason: 'timeout' })
+        }
+        this.pendingQueue = []
+      }
+    }, 3000)
 
     this.ws.onopen = () => {
       this.reconnectAttempts = 0
+      if (this.connectionTimeout) { clearTimeout(this.connectionTimeout); this.connectionTimeout = null }
       this.dispatch('connected', {})
+      // Flush pending queue
+      for (const msg of this.pendingQueue) {
+        this.ws!.send(JSON.stringify(msg))
+      }
+      this.pendingQueue = []
     }
 
     this.ws.onmessage = (event) => {
@@ -45,7 +64,13 @@ class WsClient {
   send(msg: ClientMessage): void {
     if (this.ws?.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(msg))
+    } else if (this.ws?.readyState === WebSocket.CONNECTING) {
+      // Queue up to 50 messages while connecting
+      if (this.pendingQueue.length < 50) {
+        this.pendingQueue.push(msg)
+      }
     } else {
+      // Only fail if definitely closed/aborted
       this.dispatch('send_failed', { reason: 'disconnected' })
     }
   }
@@ -78,6 +103,8 @@ class WsClient {
   disconnect(): void {
     this.intentionalClose = true
     if (this.reconnectTimer) clearTimeout(this.reconnectTimer)
+    if (this.connectionTimeout) { clearTimeout(this.connectionTimeout); this.connectionTimeout = null }
+    this.pendingQueue = []
     this.ws?.close()
     this.ws = null
   }
