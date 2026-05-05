@@ -10,6 +10,7 @@ WORKDIR /app
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/dist-server ./dist-server
 COPY --from=build /app/package*.json ./
+RUN npm ci --omit=dev
 ENV NODE_ENV=production
 EXPOSE 3001
 CMD ["npm", "start"]
