@@ -15,6 +15,7 @@ export interface SoloCell {
 interface SoloState {
   board: SoloCell[][] | null
   config: DifficultyConfig | null
+  difficulty: Difficulty | null
   phase: 'idle' | 'playing' | 'won' | 'lost'
   flagsPlaced: number
   elapsedSeconds: number
@@ -152,6 +153,7 @@ export const useSoloStore = create<SoloState>((set, get) => ({
     set({
       board,
       config,
+      difficulty,
       phase: 'playing',
       flagsPlaced: 0,
       elapsedSeconds: 0,
@@ -296,8 +298,22 @@ export const useSoloStore = create<SoloState>((set, get) => ({
   setMouseDown: (down) => set({ mouseDown: down }),
 
   reset: () => {
+    const { difficulty } = get()
     get().stopTimer()
-    set({ board: null, config: null, phase: 'idle', flagsPlaced: 0, elapsedSeconds: 0, firstClick: true })
+    if (difficulty) {
+      const config = DIFFICULTIES[difficulty]
+      const board = generateEmptyBoard(config)
+      const id = setInterval(() => {
+        set((s) => ({ elapsedSeconds: s.elapsedSeconds + 1 }))
+      }, 1000)
+      set({
+        board, config,
+        phase: 'playing', flagsPlaced: 0, elapsedSeconds: 0,
+        timerInterval: id, firstClick: true,
+      })
+    } else {
+      set({ board: null, config: null, phase: 'idle', flagsPlaced: 0, elapsedSeconds: 0, firstClick: true })
+    }
   },
 
   stopTimer: () => {

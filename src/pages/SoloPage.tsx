@@ -136,9 +136,19 @@ export default function SoloPage() {
           <>
             {/* Header */}
             <div className="flex items-center justify-between w-full gap-4 flex-wrap px-2">
-              <span className="text-[#8b8070] text-sm font-semibold">
-                经典模式 · {config ? `${config.width}×${config.height} ${config.mines}雷` : ''}
-              </span>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => reset()}
+                  className="px-3 py-1 text-xs font-semibold rounded-lg border border-warm-border
+                             bg-warm-surface2 text-warm-text-dim hover:text-warm-text hover:bg-warm-surface
+                             transition-all"
+                >
+                  ↻ 新游戏
+                </button>
+                <span className="text-[#8b8070] text-sm font-semibold">
+                  经典模式 · {config ? `${config.width}×${config.height} ${config.mines}雷` : ''}
+                </span>
+              </div>
               <div className="flex items-center gap-3">
                 {/* Mine counter */}
                 <div className="flex items-center gap-2 bg-[#f5f0e8] border border-[#e8ddcc] rounded-lg px-3 py-2 font-mono">
@@ -198,7 +208,7 @@ export default function SoloPage() {
                   className="mt-3 px-5 py-2 bg-warm-accent hover:bg-warm-accent-hover text-white font-semibold
                              rounded-xl transition-all shadow-md"
                 >
-                  再来一局
+                  再来一局 (新地图)
                 </button>
               </div>
             )}
