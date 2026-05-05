@@ -601,13 +601,21 @@ export class GameRoom {
   }
 
   private placeMinesInBoard(board: CellState[][], config: DifficultyConfig, safeX: number, safeY: number): void {
-    // Only exclude the clicked cell itself from mine placement
-    const safeKey = `${safeX},${safeY}`
+    const safeZone = new Set<string>()
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        const nx = safeX + dx
+        const ny = safeY + dy
+        if (nx >= 0 && nx < config.width && ny >= 0 && ny < config.height) {
+          safeZone.add(`${nx},${ny}`)
+        }
+      }
+    }
 
     const positions: { x: number; y: number }[] = []
     for (let y = 0; y < config.height; y++) {
       for (let x = 0; x < config.width; x++) {
-        if (`${x},${y}` !== safeKey) {
+        if (!safeZone.has(`${x},${y}`)) {
           positions.push({ x, y })
         }
       }
