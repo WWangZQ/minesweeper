@@ -161,6 +161,7 @@ export default function SoloPage() {
                 {/* Face */}
                 <button
                   onClick={() => reset()}
+                  title="点击重新开始（同一难度，新地图）"
                   className="w-[46px] h-[46px] rounded-lg border border-[#e8ddcc] bg-[#f5f0e8] text-[26px]
                              flex items-center justify-center leading-none hover:bg-[#e8ddcc] active:scale-95 transition-all"
                 >
