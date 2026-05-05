@@ -208,7 +208,7 @@ export default function SoloPage() {
                   className="mt-3 px-5 py-2 bg-warm-accent hover:bg-warm-accent-hover text-white font-semibold
                              rounded-xl transition-all shadow-md"
                 >
-                  再来一局 (新地图)
+                  再来一局
                 </button>
               </div>
             )}
