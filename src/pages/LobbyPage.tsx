@@ -47,11 +47,15 @@ export default function LobbyPage() {
     function handleError(payload: any) {
       toast.error(payload.message)
     }
+    function handleSendFailed() {
+      toast.error('服务器未连接，请检查网络后刷新页面')
+    }
 
     wsClient.on('rooms_list', handleRoomsList)
     wsClient.on('room_created', handleRoomCreated)
     wsClient.on('room_joined', handleRoomJoined)
     wsClient.on('error', handleError)
+    wsClient.on('send_failed', handleSendFailed)
 
     // Request room list, refresh every 5s
     wsClient.send({ type: 'get_rooms' })
@@ -64,6 +68,7 @@ export default function LobbyPage() {
       wsClient.off('room_created', handleRoomCreated)
       wsClient.off('room_joined', handleRoomJoined)
       wsClient.off('error', handleError)
+      wsClient.off('send_failed', handleSendFailed)
       clearInterval(interval)
     }
   }, [navigate])
@@ -96,10 +101,13 @@ export default function LobbyPage() {
 
         {/* Connection status */}
         <div className="text-center text-xs">
-          <span className={connectionStatus === 'connected'
-            ? 'text-green-600' : 'text-red-500'}>
-            {connectionStatus === 'connected' ? '已连接' : '连接中...'}
-          </span>
+          {connectionStatus === 'connected' ? (
+            <span className="text-green-600">已连接</span>
+          ) : connectionStatus === 'connecting' ? (
+            <span className="text-amber-500">连接中...</span>
+          ) : (
+            <span className="text-red-500">连接失败，刷新页面重试</span>
+          )}
         </div>
 
         {/* Name input */}
@@ -230,6 +238,16 @@ export default function LobbyPage() {
         {rooms.length === 0 && (
           <p className="text-center text-sm text-warm-text-muted py-2">暂无房间，创建一个吧</p>
         )}
+
+        {/* Classic mode link */}
+        <div className="text-center pt-2 border-t border-warm-border">
+          <a
+            href="#/solo"
+            className="text-sm text-warm-text-dim hover:text-warm-accent transition-colors underline"
+          >
+            无需联网？试试经典单人模式
+          </a>
+        </div>
       </div>
     </div>
   )

@@ -45,6 +45,8 @@ class WsClient {
   send(msg: ClientMessage): void {
     if (this.ws?.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(msg))
+    } else {
+      this.dispatch('send_failed', { reason: 'disconnected' })
     }
   }
 

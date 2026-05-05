@@ -9,6 +9,8 @@ export function useWebSocket() {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
     const wsUrl = `${protocol}//${window.location.host}/ws`
 
+    setConnectionStatus('connecting')
+
     const onConnected = () => setConnectionStatus('connected')
     const onDisconnected = () => setConnectionStatus('disconnected')
 
@@ -21,5 +23,5 @@ export function useWebSocket() {
       wsClient.off('disconnected', onDisconnected)
       wsClient.disconnect()
     }
-  }, [])
+  }, [setConnectionStatus])
 }
