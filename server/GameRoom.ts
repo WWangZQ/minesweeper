@@ -22,6 +22,9 @@ export class GameRoom {
   startedAt: number | null = null
   creatorId: string = ''
   private mineLayout: { x: number; y: number }[] = []
+  private firstClickDone: boolean = false
+  // Race mode: per-player first-click tracking
+  private raceFirstClicks: Map<string, boolean> = new Map()
 
   // Connection sockets: playerId → WebSocket
   private sockets: Map<string, WebSocket> = new Map()
@@ -84,12 +87,14 @@ export class GameRoom {
     }
 
     if (this.mode === 'race') {
-      // Generate one master layout, clone per player
+      // Generate one master layout, but defer actual mine placement to first click
       this.mineLayout = generateMineLayout(this.config)
+      this.raceFirstClicks.clear()
       this.boards.clear()
       for (const p of this.players) {
-        const board = buildBoardFromMines(this.config, this.mineLayout)
+        const board = this.emptyBoard(this.config)
         this.boards.set(p.id, board)
+        this.raceFirstClicks.set(p.id, false)
         const visible = boardToVisible(board, false)
         this.sendTo(p.id, {
           type: 'game_started',
@@ -102,8 +107,9 @@ export class GameRoom {
         })
       }
     } else {
-      // Battle / Co-op: shared board
-      this.sharedBoard = generateBoard(this.config)
+      // Battle / Co-op: empty shared board, mines placed on first click
+      this.firstClickDone = false
+      this.sharedBoard = this.emptyBoard(this.config)
       const visible = boardToVisible(this.sharedBoard, false)
       this.broadcast({
         type: 'game_started',
@@ -128,6 +134,17 @@ export class GameRoom {
       : this.sharedBoard!
 
     if (!board) return
+
+    // First click: place mines with safe zone around click
+    if (this.mode === 'race') {
+      if (!this.raceFirstClicks.get(playerId)) {
+        this.raceFirstClicks.set(playerId, true)
+        this.placeMinesInBoard(board, this.config, x, y)
+      }
+    } else if (!this.firstClickDone) {
+      this.firstClickDone = true
+      this.placeMinesInBoard(board, this.config, x, y)
+    }
 
     const { cells, hitMine } = revealCell(board, x, y, this.config)
 
@@ -485,6 +502,8 @@ export class GameRoom {
     this.sharedBoard = null
     this.boards.clear()
     this.mineLayout = []
+    this.firstClickDone = false
+    this.raceFirstClicks.clear()
 
     for (const p of this.players) {
       p.alive = true
@@ -566,6 +585,68 @@ export class GameRoom {
     for (const ws of this.sockets.values()) {
       if (ws.readyState === ws.OPEN) {
         ws.send(data)
+      }
+    }
+  }
+
+  private emptyBoard(config: DifficultyConfig): CellState[][] {
+    const board: CellState[][] = []
+    for (let y = 0; y < config.height; y++) {
+      board[y] = []
+      for (let x = 0; x < config.width; x++) {
+        board[y][x] = { x, y, mine: false, revealed: false, flagged: false, adjacentMines: 0 }
+      }
+    }
+    return board
+  }
+
+  private placeMinesInBoard(board: CellState[][], config: DifficultyConfig, safeX: number, safeY: number): void {
+    const safeZone = new Set<string>()
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        const nx = safeX + dx
+        const ny = safeY + dy
+        if (nx >= 0 && nx < config.width && ny >= 0 && ny < config.height) {
+          safeZone.add(`${nx},${ny}`)
+        }
+      }
+    }
+
+    const positions: { x: number; y: number }[] = []
+    for (let y = 0; y < config.height; y++) {
+      for (let x = 0; x < config.width; x++) {
+        if (!safeZone.has(`${x},${y}`)) {
+          positions.push({ x, y })
+        }
+      }
+    }
+    for (let i = positions.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1))
+      ;[positions[i], positions[j]] = [positions[j], positions[i]]
+    }
+
+    const mineCount = Math.min(config.mines, positions.length)
+    for (let i = 0; i < mineCount; i++) {
+      const { x, y } = positions[i]
+      board[y][x].mine = true
+    }
+
+    // Recompute adjacent mine counts
+    for (let y = 0; y < config.height; y++) {
+      for (let x = 0; x < config.width; x++) {
+        if (board[y][x].mine) continue
+        let count = 0
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            if (dx === 0 && dy === 0) continue
+            const nx = x + dx
+            const ny = y + dy
+            if (nx >= 0 && nx < config.width && ny >= 0 && ny < config.height && board[ny][nx].mine) {
+              count++
+            }
+          }
+        }
+        board[y][x].adjacentMines = count
       }
     }
   }

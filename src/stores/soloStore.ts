@@ -20,6 +20,7 @@ interface SoloState {
   elapsedSeconds: number
   timerInterval: ReturnType<typeof setInterval> | null
   mouseDown: boolean
+  firstClick: boolean
 
   startGame: (difficulty: Difficulty) => void
   revealCell: (x: number, y: number) => void
@@ -30,7 +31,7 @@ interface SoloState {
   stopTimer: () => void
 }
 
-function generateBoard(config: DifficultyConfig): SoloCell[][] {
+function generateEmptyBoard(config: DifficultyConfig): SoloCell[][] {
   const board: SoloCell[][] = []
   for (let y = 0; y < config.height; y++) {
     board[y] = []
@@ -38,24 +39,43 @@ function generateBoard(config: DifficultyConfig): SoloCell[][] {
       board[y][x] = { x, y, mine: false, revealed: false, flagged: false, adjacentMines: 0 }
     }
   }
+  return board
+}
 
-  // Fisher-Yates mine placement
+function placeMines(board: SoloCell[][], config: DifficultyConfig, safeX: number, safeY: number): void {
+  // Exclude safe zone: the clicked cell and its 8 neighbors
+  const safeZone = new Set<string>()
+  for (let dy = -1; dy <= 1; dy++) {
+    for (let dx = -1; dx <= 1; dx++) {
+      const nx = safeX + dx
+      const ny = safeY + dy
+      if (nx >= 0 && nx < config.width && ny >= 0 && ny < config.height) {
+        safeZone.add(`${nx},${ny}`)
+      }
+    }
+  }
+
+  // Fisher-Yates for mine positions, skipping safe zone
   const positions: { x: number; y: number }[] = []
   for (let y = 0; y < config.height; y++) {
     for (let x = 0; x < config.width; x++) {
-      positions.push({ x, y })
+      if (!safeZone.has(`${x},${y}`)) {
+        positions.push({ x, y })
+      }
     }
   }
   for (let i = positions.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1))
     ;[positions[i], positions[j]] = [positions[j], positions[i]]
   }
-  for (let i = 0; i < config.mines; i++) {
+
+  const mineCount = Math.min(config.mines, positions.length)
+  for (let i = 0; i < mineCount; i++) {
     const { x, y } = positions[i]
     board[y][x].mine = true
   }
 
-  // Compute adjacent mine counts
+  // Recompute adjacent mine counts
   for (let y = 0; y < config.height; y++) {
     for (let x = 0; x < config.width; x++) {
       if (board[y][x].mine) continue
@@ -73,8 +93,6 @@ function generateBoard(config: DifficultyConfig): SoloCell[][] {
       board[y][x].adjacentMines = count
     }
   }
-
-  return board
 }
 
 function checkWin(board: SoloCell[][], config: DifficultyConfig): boolean {
@@ -120,7 +138,7 @@ export const useSoloStore = create<SoloState>((set, get) => ({
 
   startGame: (difficulty) => {
     const config = DIFFICULTIES[difficulty]
-    const board = generateBoard(config)
+    const board = generateEmptyBoard(config)
     const existing = get().timerInterval
     if (existing) clearInterval(existing)
     const id = setInterval(() => {
@@ -134,14 +152,28 @@ export const useSoloStore = create<SoloState>((set, get) => ({
       elapsedSeconds: 0,
       timerInterval: id,
       mouseDown: false,
+      firstClick: true,
     })
   },
 
   revealCell: (x, y) => {
-    const { board, config, phase, mouseDown } = get()
+    const { board, config, phase, firstClick } = get()
     if (!board || !config || phase !== 'playing') return
     const cell = board[y]?.[x]
     if (!cell || cell.revealed || cell.flagged) return
+
+    // On first click, place mines excluding the safe zone, then reveal
+    if (firstClick) {
+      placeMines(board, config, x, y)
+      set({ firstClick: false })
+      // Clone for BFS
+      const newBoard = board.map((row) => row.map((c) => ({ ...c })))
+      revealBFS(newBoard, x, y, config)
+      const won = checkWin(newBoard, config)
+      if (won) get().stopTimer()
+      set({ board: newBoard, phase: won ? 'won' : 'playing' })
+      return
+    }
 
     if (cell.mine) {
       // Reveal all mines
@@ -260,7 +292,7 @@ export const useSoloStore = create<SoloState>((set, get) => ({
 
   reset: () => {
     get().stopTimer()
-    set({ board: null, config: null, phase: 'idle', flagsPlaced: 0, elapsedSeconds: 0 })
+    set({ board: null, config: null, phase: 'idle', flagsPlaced: 0, elapsedSeconds: 0, firstClick: true })
   },
 
   stopTimer: () => {
