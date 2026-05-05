@@ -29,6 +29,7 @@ interface SoloState {
   chordReveal: (x: number, y: number) => void
   setMouseDown: (down: boolean) => void
   reset: () => void
+  backToMenu: () => void
   stopTimer: () => void
 }
 
@@ -309,6 +310,11 @@ export const useSoloStore = create<SoloState>((set, get) => ({
     } else {
       set({ board: null, config: null, phase: 'idle', flagsPlaced: 0, elapsedSeconds: 0, firstClick: true })
     }
+  },
+
+  backToMenu: () => {
+    get().stopTimer()
+    set({ board: null, config: null, difficulty: null, phase: 'idle', flagsPlaced: 0, elapsedSeconds: 0, firstClick: true })
   },
 
   stopTimer: () => {

@@ -100,6 +100,7 @@ export default function SoloPage() {
   const elapsed = useSoloStore((s) => s.elapsedSeconds)
   const startGame = useSoloStore((s) => s.startGame)
   const reset = useSoloStore((s) => s.reset)
+  const backToMenu = useSoloStore((s) => s.backToMenu)
 
   const remaining = config ? config.mines - flagsPlaced : 0
   const minutes = Math.floor(elapsed / 60)
@@ -112,7 +113,7 @@ export default function SoloPage() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4">
-      <div className="bg-warm-surface border border-warm-border rounded-2xl shadow-lg p-6 max-w-full flex flex-col gap-5">
+      <div className="bg-warm-surface border border-warm-border rounded-2xl shadow-lg p-6 flex flex-col gap-5">
         {/* Mode label and face */}
         {phase === 'idle' ? (
           <>
@@ -138,12 +139,12 @@ export default function SoloPage() {
             <div className="flex items-center justify-between w-full gap-4 flex-wrap px-2">
               <div className="flex items-center gap-3">
                 <button
-                  onClick={() => reset()}
+                  onClick={() => backToMenu()}
                   className="px-3 py-1 text-xs font-semibold rounded-lg border border-warm-border
                              bg-warm-surface2 text-warm-text-dim hover:text-warm-text hover:bg-warm-surface
                              transition-all"
                 >
-                  ↻ 新游戏
+                  ← 选择难度
                 </button>
                 <span className="text-[#8b8070] text-sm font-semibold">
                   经典模式 · {config ? `${config.width}×${config.height} ${config.mines}雷` : ''}
@@ -177,7 +178,7 @@ export default function SoloPage() {
 
             {/* Board */}
             {board && config && (
-              <div className="bg-[#f5f0e8] border border-[#e8ddcc] rounded-lg p-2 shadow-[inset_0_2px_6px_rgba(0,0,0,0.04)]">
+              <div className="bg-[#f5f0e8] border border-[#e8ddcc] rounded-lg p-2 shadow-[inset_0_2px_6px_rgba(0,0,0,0.04)] self-center">
                 <div
                   className="grid"
                   style={{
