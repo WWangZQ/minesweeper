@@ -66,6 +66,7 @@ export type ClientMessage =
   | { type: 'start_game';   payload: { roomId: string } }
   | { type: 'reveal_cell';  payload: { roomId: string; x: number; y: number } }
   | { type: 'flag_cell';    payload: { roomId: string; x: number; y: number } }
+  | { type: 'chord_cell';   payload: { roomId: string; x: number; y: number } }
   | { type: 'rematch';      payload: { roomId: string } }
   | { type: 'get_rooms' }
 

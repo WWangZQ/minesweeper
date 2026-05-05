@@ -21,6 +21,12 @@ const Cell = React.memo(function Cell({ x, y }: { x: number; y: number }) {
     wsClient.send({ type: 'flag_cell', payload: { roomId, x, y } })
   }, [phase, alive, cell, roomId, x, y])
 
+  const handleDoubleClick = useCallback(() => {
+    if (phase !== 'playing' || !alive) return
+    if (!cell || !cell.revealed || cell.mine || cell.adjacentMines === 0) return
+    wsClient.send({ type: 'chord_cell', payload: { roomId, x, y } })
+  }, [phase, alive, cell, roomId, x, y])
+
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (e.button === 0 && cell && !cell.revealed && !cell.flagged && phase === 'playing') {
       // face will show 😮 — handled by header subscription
@@ -74,6 +80,7 @@ const Cell = React.memo(function Cell({ x, y }: { x: number; y: number }) {
         width: 'var(--cell-size, 38px)',
         height: 'var(--cell-size, 38px)',
       }}
+      onDoubleClick={handleDoubleClick}
       onClick={handleClick}
       onContextMenu={handleContextMenu}
       onMouseDown={handleMouseDown}

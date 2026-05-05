@@ -161,6 +161,13 @@ function handleMessage(ws: WebSocket, msg: ClientMessage): void {
       break
     }
 
+    case 'chord_cell': {
+      const room = rooms.get(msg.payload.roomId)
+      if (!room) { send(ws, { type: 'error', payload: { message: '房间不存在' } }); return }
+      room.handleChord(conn.playerId, msg.payload.x, msg.payload.y)
+      break
+    }
+
     case 'rematch': {
       const room = rooms.get(msg.payload.roomId)
       if (!room) { send(ws, { type: 'error', payload: { message: '房间不存在' } }); return }

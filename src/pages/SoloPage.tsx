@@ -23,12 +23,18 @@ function SoloCellView({ cell }: { cell: SoloCell }) {
   const phase = useSoloStore((s) => s.phase)
   const revealCell = useSoloStore((s) => s.revealCell)
   const toggleFlag = useSoloStore((s) => s.toggleFlag)
+  const chordReveal = useSoloStore((s) => s.chordReveal)
   const setMouseDown = useSoloStore((s) => s.setMouseDown)
 
   const handleClick = useCallback(() => {
     if (phase !== 'playing') return
     revealCell(cell.x, cell.y)
   }, [phase, cell.x, cell.y, revealCell])
+
+  const handleDoubleClick = useCallback(() => {
+    if (phase !== 'playing') return
+    chordReveal(cell.x, cell.y)
+  }, [phase, cell.x, cell.y, chordReveal])
 
   const handleContextMenu = useCallback(
     (e: React.MouseEvent) => {
@@ -75,6 +81,7 @@ function SoloCellView({ cell }: { cell: SoloCell }) {
     <button
       className={[...baseClasses, extraClasses].join(' ')}
       onClick={handleClick}
+      onDoubleClick={handleDoubleClick}
       onContextMenu={handleContextMenu}
       onMouseDown={() => setMouseDown(true)}
       onMouseUp={() => setMouseDown(false)}

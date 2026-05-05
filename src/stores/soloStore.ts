@@ -24,6 +24,7 @@ interface SoloState {
   startGame: (difficulty: Difficulty) => void
   revealCell: (x: number, y: number) => void
   toggleFlag: (x: number, y: number) => void
+  chordReveal: (x: number, y: number) => void
   setMouseDown: (down: boolean) => void
   reset: () => void
   stopTimer: () => void
@@ -191,6 +192,68 @@ export const useSoloStore = create<SoloState>((set, get) => ({
       }
     }
     set({ board: newBoard, flagsPlaced: flags })
+  },
+
+  chordReveal: (x, y) => {
+    const { board, config, phase } = get()
+    if (!board || !config || phase !== 'playing') return
+    const cell = board[y]?.[x]
+    if (!cell || !cell.revealed || cell.mine || cell.adjacentMines === 0) return
+
+    // Count adjacent flags
+    let adjacentFlags = 0
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        if (dx === 0 && dy === 0) continue
+        const nx = x + dx
+        const ny = y + dy
+        if (nx >= 0 && nx < config.width && ny >= 0 && ny < config.height && board[ny][nx].flagged) {
+          adjacentFlags++
+        }
+      }
+    }
+
+    if (adjacentFlags !== cell.adjacentMines) return
+
+    // Reveal all non-flagged surrounding cells
+    const newBoard = board.map((row) => row.map((c) => ({ ...c })))
+    let hitMine = false
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        if (dx === 0 && dy === 0) continue
+        const nx = x + dx
+        const ny = y + dy
+        if (nx >= 0 && nx < config.width && ny >= 0 && ny < config.height) {
+          const neighbor = newBoard[ny][nx]
+          if (!neighbor.revealed && !neighbor.flagged) {
+            revealBFS(newBoard, nx, ny, config)
+            if (neighbor.mine) hitMine = true
+          }
+        }
+      }
+    }
+
+    if (hitMine) {
+      // Reveal all mines
+      for (const row of newBoard) {
+        for (const c of row) {
+          if (c.mine && !c.revealed) c.revealed = true
+        }
+      }
+      get().stopTimer()
+      set({ board: newBoard, phase: 'lost' })
+      return
+    }
+
+    const won = checkWin(newBoard, config)
+    if (won) get().stopTimer()
+    let flags = 0
+    for (const row of newBoard) {
+      for (const c of row) {
+        if (c.flagged) flags++
+      }
+    }
+    set({ board: newBoard, phase: won ? 'won' : 'playing', flagsPlaced: flags })
   },
 
   setMouseDown: (down) => set({ mouseDown: down }),
