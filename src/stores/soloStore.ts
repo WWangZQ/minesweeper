@@ -43,14 +43,19 @@ function generateEmptyBoard(config: DifficultyConfig): SoloCell[][] {
 }
 
 function placeMines(board: SoloCell[][], config: DifficultyConfig, safeX: number, safeY: number): void {
-  // Exclude safe zone: the clicked cell and its 8 neighbors
   const safeZone = new Set<string>()
-  for (let dy = -1; dy <= 1; dy++) {
-    for (let dx = -1; dx <= 1; dx++) {
-      const nx = safeX + dx
-      const ny = safeY + dy
-      if (nx >= 0 && nx < config.width && ny >= 0 && ny < config.height) {
-        safeZone.add(`${nx},${ny}`)
+  safeZone.add(`${safeX},${safeY}`)
+
+  // For larger boards, also exclude the 8 neighbors to guarantee a decent opening
+  if (config.width >= 16 || config.height >= 16) {
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        if (dx === 0 && dy === 0) continue
+        const nx = safeX + dx
+        const ny = safeY + dy
+        if (nx >= 0 && nx < config.width && ny >= 0 && ny < config.height) {
+          safeZone.add(`${nx},${ny}`)
+        }
       }
     }
   }
