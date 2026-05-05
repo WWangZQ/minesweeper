@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>扫雷 · Minesweeper</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #faf7f2;
+    --surface: #ffffff;
+    --surface2: #f5f0e8;
+    --border: #e8ddcc;
+    --border-strong: #d4c4a8;
+    --text: #2d2218;
+    --text-dim: #8b8070;
+    --text-muted: #b8a890;
+    --accent: #d97706;
+    --accent-hover: #b65f00;
+    --accent-soft: #fef3c7;
+    --accent-glow: #f59e0b;
+    --danger: #dc2626;
+    --danger-soft: #fef2f2;
+    --success: #16a34a;
+    --success-soft: #f0fdf4;
+    --cell-size: 38px;
+    --gap: 3px;
+    --radius-sm: 6px;
+    --radius: 10px;
+    --radius-lg: 16px;
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+    --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04);
+    --shadow-lg: 0 12px 40px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.04);
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+    background: var(--bg);
+    background-image:
+      radial-gradient(ellipse at 30% 20%, rgba(217,119,6,0.04) 0%, transparent 55%),
+      radial-gradient(ellipse at 70% 80%, rgba(217,119,6,0.03) 0%, transparent 55%);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow-x: hidden;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  .game-wrapper {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 28px 32px 32px;
+    box-shadow: var(--shadow-lg);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+  }
+
+  /* Header bar */
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .difficulty-group {
+    display: flex;
+    gap: 2px;
+    background: var(--surface2);
+    border-radius: var(--radius);
+    padding: 4px;
+    border: 1px solid var(--border);
+  }
+
+  .diff-btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--text-dim);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    letter-spacing: -0.01em;
+  }
+  .diff-btn:hover { color: var(--text); background: var(--surface); }
+  .diff-btn.active {
+    background: var(--accent);
+    color: #fff;
+    box-shadow: 0 2px 6px rgba(217,119,6,0.25);
+  }
+
+  .stats {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .stat-box {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 8px 14px;
+    font-variant-numeric: tabular-nums;
+  }
+  .stat-icon { font-size: 17px; line-height: 1; }
+  .stat-value {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--accent);
+    min-width: 26px;
+    text-align: center;
+    letter-spacing: 1px;
+  }
+
+  .face-btn {
+    width: 46px;
+    height: 46px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    font-size: 26px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    flex-shrink: 0;
+  }
+  .face-btn:hover { background: var(--border); transform: scale(1.06); }
+  .face-btn:active { transform: scale(0.94); }
+
+  /* Board */
+  .board-container {
+    position: relative;
+    background: var(--surface2);
+    border-radius: var(--radius);
+    padding: 8px;
+    border: 1px solid var(--border);
+    box-shadow: inset 0 2px 6px rgba(0,0,0,0.04);
+  }
+
+  .board {
+    display: grid;
+    gap: var(--gap);
+  }
+
+  .cell {
+    width: var(--cell-size);
+    height: var(--cell-size);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    font-size: 17px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.08s ease;
+    background: var(--surface);
+    box-shadow: var(--shadow-sm);
+    color: transparent;
+    line-height: 1;
+  }
+  .cell:hover {
+    background: #fef3c7;
+    border-color: var(--accent-glow);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+  }
+  .cell:active { transform: scale(0.93); }
+
+  .cell.revealed {
+    background: #faf7f2;
+    border-color: var(--border);
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.04);
+    cursor: default;
+    transform: none;
+  }
+  .cell.revealed:hover {
+    background: #faf7f2;
+    border-color: var(--border);
+    transform: none;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.04);
+  }
+
+  .cell.flagged {
+    background: var(--accent-soft);
+    border-color: var(--accent-glow);
+  }
+  .cell.question { color: var(--text-dim); }
+
+  /* Number colors — Claude warm palette */
+  .cell.n1  { color: #2563eb; }
+  .cell.n2  { color: #16a34a; }
+  .cell.n3  { color: #dc2626; }
+  .cell.n4  { color: #7c3aed; }
+  .cell.n5  { color: #be123c; }
+  .cell.n6  { color: #0891b2; }
+  .cell.n7  { color: #2d2218; }
+  .cell.n8  { color: #8b8070; }
+
+  .cell.mine-exploded {
+    background: #fef2f2 !important;
+    border-color: #dc2626 !important;
+    animation: explode 0.4s ease;
+  }
+
+  .cell.mine-reveal {
+    color: var(--danger);
+    animation: revealPop 0.3s ease;
+  }
+
+  @keyframes explode {
+    0% { background: #fff; transform: scale(1); }
+    30% { background: #fecaca; transform: scale(1.25); }
+    100% { background: #fef2f2; transform: scale(1); }
+  }
+
+  @keyframes revealPop {
+    0% { transform: scale(0.85); }
+    60% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+  }
+
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-6px); }
+    40% { transform: translateX(6px); }
+    60% { transform: translateX(-4px); }
+    80% { transform: translateX(4px); }
+  }
+  .shake { animation: shake 0.5s ease; }
+
+  /* Overlay */
+  .overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(45,34,24,0.5);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+  }
+  .overlay.show {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .overlay-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 36px 44px;
+    text-align: center;
+    transform: scale(0.85);
+    transition: transform 0.35s cubic-bezier(0.34,1.56,0.64,1);
+    box-shadow: var(--shadow-lg);
+  }
+  .overlay.show .overlay-card { transform: scale(1); }
+
+  .overlay-icon { font-size: 52px; margin-bottom: 12px; }
+  .overlay-title {
+    font-size: 24px;
+    font-weight: 700;
+    margin-bottom: 6px;
+    letter-spacing: -0.01em;
+  }
+  .overlay-subtitle {
+    color: var(--text-dim);
+    font-size: 14px;
+    margin-bottom: 22px;
+  }
+  .overlay-btn {
+    padding: 10px 32px;
+    border-radius: var(--radius);
+    border: none;
+    background: var(--accent);
+    color: #fff;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(217,119,6,0.25);
+    letter-spacing: -0.01em;
+  }
+  .overlay-btn:hover { background: var(--accent-hover); transform: translateY(-1px); }
+  .overlay-btn:active { transform: scale(0.96); }
+
+  /* Confetti for win */
+  @keyframes confetti-fall {
+    0% { transform: translateY(-100vh) rotate(0deg); opacity: 1; }
+    100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+  }
+  .confetti {
+    position: fixed;
+    pointer-events: none;
+    font-size: 24px;
+    animation: confetti-fall 2.5s ease-in forwards;
+    z-index: 200;
+  }
+
+  /* Responsive */
+  @media (max-width: 640px) {
+    :root { --cell-size: 28px; }
+    .game-wrapper { padding: 16px 12px 20px; border-radius: var(--radius); }
+    .header { gap: 8px; }
+    .diff-btn { padding: 6px 10px; font-size: 11px; }
+    .stat-box { padding: 6px 10px; }
+    .stat-value { font-size: 16px; }
+    .face-btn { width: 38px; height: 38px; font-size: 22px; }
+    .board-container { padding: 4px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="game-wrapper" id="gameWrapper">
+  <!-- Header -->
+  <div class="header">
+    <div class="difficulty-group" id="diffGroup">
+      <button class="diff-btn active" data-mode="easy">9×9 初级</button>
+      <button class="diff-btn" data-mode="medium">16×16 中级</button>
+      <button class="diff-btn" data-mode="hard">30×16 高级</button>
+    </div>
+    <div class="stats">
+      <div class="stat-box">
+        <span class="stat-icon">💣</span>
+        <span class="stat-value" id="mineCount">10</span>
+      </div>
+      <button class="face-btn" id="faceBtn">🙂</button>
+      <div class="stat-box">
+        <span class="stat-icon">⏱</span>
+        <span class="stat-value" id="timer">0</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Board -->
+  <div class="board-container">
+    <div class="board" id="board"></div>
+  </div>
+</div>
+
+<!-- Overlay -->
+<div class="overlay" id="overlay">
+  <div class="overlay-card">
+    <div class="overlay-icon" id="overlayIcon"></div>
+    <div class="overlay-title" id="overlayTitle"></div>
+    <div class="overlay-subtitle" id="overlaySubtitle"></div>
+    <button class="overlay-btn" id="overlayBtn">再来一局</button>
+  </div>
+</div>
+
+<script>
+  const DIFFICULTIES = {
+    easy:   { width: 9,  height: 9,  mines: 10 },
+    medium: { width: 16, height: 16, mines: 40 },
+    hard:   { width: 30, height: 16, mines: 99 },
+  };
+
+  class Minesweeper {
+    constructor() {
+      this.difficulty = 'easy';
+      this.width = 9;
+      this.height = 9;
+      this.totalMines = 10;
+      this.board = [];
+      this.firstClick = true;
+      this.gameOver = false;
+      this.won = false;
+      this.flagCount = 0;
+      this.revealedCount = 0;
+      this.timer = 0;
+      this.timerInterval = null;
+
+      this.boardEl = document.getElementById('board');
+      this.mineCountEl = document.getElementById('mineCount');
+      this.timerEl = document.getElementById('timer');
+      this.faceBtn = document.getElementById('faceBtn');
+      this.overlay = document.getElementById('overlay');
+      this.overlayIcon = document.getElementById('overlayIcon');
+      this.overlayTitle = document.getElementById('overlayTitle');
+      this.overlaySubtitle = document.getElementById('overlaySubtitle');
+      this.overlayBtn = document.getElementById('overlayBtn');
+      this.gameWrapper = document.getElementById('gameWrapper');
+
+      this.setupDifficultyButtons();
+      this.setupOverlayButton();
+      this.faceBtn.addEventListener('click', () => this.reset());
+      this.init();
+    }
+
+    setupDifficultyButtons() {
+      const btns = document.querySelectorAll('.diff-btn');
+      btns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          if (this.gameOver) return;
+          btns.forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          this.difficulty = btn.dataset.mode;
+          this.reset();
+        });
+      });
+    }
+
+    setupOverlayButton() {
+      this.overlayBtn.addEventListener('click', () => {
+        this.hideOverlay();
+        this.reset();
+      });
+    }
+
+    reset() {
+      clearInterval(this.timerInterval);
+      this.timerInterval = null;
+      this.timer = 0;
+      this.timerEl.textContent = '0';
+
+      const cfg = DIFFICULTIES[this.difficulty];
+      this.width = cfg.width;
+      this.height = cfg.height;
+      this.totalMines = cfg.mines;
+      this.firstClick = true;
+      this.gameOver = false;
+      this.won = false;
+      this.flagCount = 0;
+      this.revealedCount = 0;
+      this.board = [];
+
+      this.boardEl.style.gridTemplateColumns = `repeat(${this.width}, var(--cell-size))`;
+      this.mineCountEl.textContent = this.totalMines;
+      this.faceBtn.textContent = '🙂';
+      this.hideOverlay();
+      this.gameWrapper.classList.remove('shake');
+
+      for (let y = 0; y < this.height; y++) {
+        this.board[y] = [];
+        for (let x = 0; x < this.width; x++) {
+          this.board[y][x] = {
+            mine: false,
+            revealed: false,
+            flagged: false,
+            question: false,
+            adjacentMines: 0,
+          };
+        }
+      }
+
+      this.render();
+    }
+
+    placeMines(excludeX, excludeY) {
+      const positions = [];
+      for (let y = 0; y < this.height; y++) {
+        for (let x = 0; x < this.width; x++) {
+          if (Math.abs(x - excludeX) <= 1 && Math.abs(y - excludeY) <= 1) continue;
+          positions.push({ x, y });
+        }
+      }
+
+      for (let i = positions.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [positions[i], positions[j]] = [positions[j], positions[i]];
+      }
+
+      const minePositions = positions.slice(0, this.totalMines);
+      for (const { x, y } of minePositions) {
+        this.board[y][x].mine = true;
+      }
+
+      for (let y = 0; y < this.height; y++) {
+        for (let x = 0; x < this.width; x++) {
+          if (this.board[y][x].mine) continue;
+          this.board[y][x].adjacentMines = this.countAdjacentMines(x, y);
+        }
+      }
+    }
+
+    countAdjacentMines(cx, cy) {
+      let count = 0;
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          if (dx === 0 && dy === 0) continue;
+          const nx = cx + dx, ny = cy + dy;
+          if (nx >= 0 && nx < this.width && ny >= 0 && ny < this.height && this.board[ny][nx].mine) {
+            count++;
+          }
+        }
+      }
+      return count;
+    }
+
+    init() { this.reset(); }
+
+    render() {
+      this.boardEl.innerHTML = '';
+      for (let y = 0; y < this.height; y++) {
+        for (let x = 0; x < this.width; x++) {
+          const cell = this.board[y][x];
+          const el = document.createElement('button');
+          el.className = 'cell';
+          el.dataset.x = x;
+          el.dataset.y = y;
+
+          if (cell.revealed) {
+            el.classList.add('revealed');
+            if (cell.mine) {
+              el.classList.add('mine-reveal');
+              el.textContent = '💣';
+              if (cell.exploded) el.classList.add('mine-exploded');
+            } else if (cell.adjacentMines > 0) {
+              el.textContent = cell.adjacentMines;
+              el.classList.add('n' + cell.adjacentMines);
+            }
+          } else if (cell.flagged) {
+            el.classList.add('flagged');
+            el.textContent = '🚩';
+          } else if (cell.question) {
+            el.classList.add('question');
+            el.textContent = '❓';
+          }
+
+          el.addEventListener('click', (e) => this.onLeftClick(x, y, e));
+          el.addEventListener('contextmenu', (e) => { e.preventDefault(); this.onRightClick(x, y); });
+          el.addEventListener('mousedown', (e) => {
+            if (e.button === 0 && !cell.revealed && !cell.flagged && !this.gameOver) {
+              this.faceBtn.textContent = '😮';
+            }
+          });
+          el.addEventListener('mouseup', () => {
+            if (!this.gameOver) this.faceBtn.textContent = '🙂';
+          });
+          el.addEventListener('mouseleave', () => {
+            if (!this.gameOver) this.faceBtn.textContent = '🙂';
+          });
+
+          this.boardEl.appendChild(el);
+        }
+      }
+    }
+
+    onLeftClick(x, y, event) {
+      if (this.gameOver) return;
+      const cell = this.board[y][x];
+      if (cell.revealed || cell.flagged) return;
+
+      if (this.firstClick) {
+        this.placeMines(x, y);
+        this.firstClick = false;
+        this.startTimer();
+      }
+
+      if (cell.mine) {
+        this.triggerLoss(x, y);
+        return;
+      }
+
+      this.floodReveal(x, y);
+      this.checkWin();
+      this.render();
+    }
+
+    onRightClick(x, y) {
+      if (this.gameOver) return;
+      const cell = this.board[y][x];
+      if (cell.revealed) return;
+
+      if (this.firstClick) return;
+
+      if (!cell.flagged && !cell.question) {
+        cell.flagged = true;
+        this.flagCount++;
+      } else if (cell.flagged) {
+        cell.flagged = false;
+        cell.question = true;
+        this.flagCount--;
+      } else {
+        cell.question = false;
+      }
+
+      this.mineCountEl.textContent = this.totalMines - this.flagCount;
+      this.render();
+      this.checkWin();
+    }
+
+    floodReveal(x, y) {
+      const stack = [{ x, y }];
+      while (stack.length > 0) {
+        const { x, y } = stack.pop();
+        const cell = this.board[y][x];
+        if (cell.revealed || cell.flagged) continue;
+
+        cell.revealed = true;
+        cell.question = false;
+        if (cell.flagged) { cell.flagged = false; this.flagCount--; }
+        this.revealedCount++;
+
+        if (cell.adjacentMines === 0 && !cell.mine) {
+          for (let dy = -1; dy <= 1; dy++) {
+            for (let dx = -1; dx <= 1; dx++) {
+              if (dx === 0 && dy === 0) continue;
+              const nx = x + dx, ny = y + dy;
+              if (nx >= 0 && nx < this.width && ny >= 0 && ny < this.height) {
+                const neighbor = this.board[ny][nx];
+                if (!neighbor.revealed && !neighbor.mine && !neighbor.flagged) {
+                  stack.push({ x: nx, y: ny });
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    triggerLoss(clickX, clickY) {
+      this.gameOver = true;
+      this.won = false;
+      clearInterval(this.timerInterval);
+      this.faceBtn.textContent = '😵';
+
+      for (let y = 0; y < this.height; y++) {
+        for (let x = 0; x < this.width; x++) {
+          const cell = this.board[y][x];
+          if (cell.mine) {
+            cell.revealed = true;
+            cell.flagged = false;
+            cell.question = false;
+            if (x === clickX && y === clickY) cell.exploded = true;
+          }
+        }
+      }
+      this.render();
+      this.gameWrapper.classList.add('shake');
+      setTimeout(() => this.gameWrapper.classList.remove('shake'), 500);
+
+      setTimeout(() => this.showOverlay('lose'), 600);
+    }
+
+    checkWin() {
+      const totalCells = this.width * this.height;
+      if (this.revealedCount === totalCells - this.totalMines) {
+        this.gameOver = true;
+        this.won = true;
+        clearInterval(this.timerInterval);
+        this.faceBtn.textContent = '😎';
+
+        for (let y = 0; y < this.height; y++) {
+          for (let x = 0; x < this.width; x++) {
+            const cell = this.board[y][x];
+            if (cell.mine && !cell.flagged) {
+              cell.flagged = true;
+              this.flagCount++;
+            }
+          }
+        }
+        this.mineCountEl.textContent = '0';
+        this.render();
+        this.spawnConfetti();
+        setTimeout(() => this.showOverlay('win'), 400);
+      }
+    }
+
+    startTimer() {
+      if (this.timerInterval) return;
+      this.timerInterval = setInterval(() => {
+        this.timer++;
+        this.timerEl.textContent = Math.min(this.timer, 999);
+      }, 1000);
+    }
+
+    showOverlay(type) {
+      if (type === 'win') {
+        this.overlayIcon.textContent = '🎉';
+        this.overlayTitle.textContent = '恭喜过关！';
+        this.overlaySubtitle.textContent = `用时 ${this.timer} 秒 · ${this.difficulty === 'easy' ? '初级' : this.difficulty === 'medium' ? '中级' : '高级'}难度`;
+        this.overlayTitle.style.color = 'var(--success)';
+      } else {
+        this.overlayIcon.textContent = '💣';
+        this.overlayTitle.textContent = '踩到雷了';
+        this.overlaySubtitle.textContent = '别灰心，再来一局吧';
+        this.overlayTitle.style.color = 'var(--danger)';
+      }
+      this.overlay.classList.add('show');
+    }
+
+    hideOverlay() {
+      this.overlay.classList.remove('show');
+    }
+
+    spawnConfetti() {
+      const emojis = ['🎉', '✨', '🌟', '💫', '🎊', '🏆', '👏', '🔥', '💯', '⭐'];
+      for (let i = 0; i < 30; i++) {
+        const el = document.createElement('span');
+        el.className = 'confetti';
+        el.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+        el.style.left = Math.random() * 100 + '%';
+        el.style.top = -(Math.random() * 20 + 10) + 'px';
+        el.style.animationDuration = (Math.random() * 2 + 2) + 's';
+        el.style.animationDelay = Math.random() * 0.6 + 's';
+        document.body.appendChild(el);
+        setTimeout(() => el.remove(), 3500);
+      }
+    }
+  }
+
+  new Minesweeper();
+</script>
+</body>
+</html>

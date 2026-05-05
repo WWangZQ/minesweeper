@@ -1,0 +1,395 @@
+import type { WebSocket } from 'ws'
+import { v4 as uuidv4 } from 'uuid'
+import type {
+  CellState, CellVisible, Difficulty, DifficultyConfig, GameMode, GamePhase,
+  Player, RoomSummary, ServerMessage
+} from './types.js'
+import { DIFFICULTIES } from './types.js'
+import {
+  generateBoard, generateMineLayout, buildBoardFromMines,
+  revealCell, toggleFlag, checkWin, boardToVisible
+} from './GameLogic.js'
+
+export class GameRoom {
+  id: string
+  mode: GameMode
+  difficulty: Difficulty
+  config: DifficultyConfig
+  phase: GamePhase = 'waiting'
+  players: Player[] = []
+  sharedBoard: CellState[][] | null = null
+  boards: Map<string, CellState[][]> = new Map()
+  startedAt: number | null = null
+  creatorId: string = ''
+  private mineLayout: { x: number; y: number }[] = []
+
+  // Connection sockets: playerId → WebSocket
+  private sockets: Map<string, WebSocket> = new Map()
+
+  constructor(id: string, mode: GameMode, difficulty: Difficulty) {
+    this.id = id
+    this.mode = mode
+    this.difficulty = difficulty
+    this.config = DIFFICULTIES[difficulty]
+  }
+
+  addPlayer(ws: WebSocket, playerName: string): Player {
+    const id = uuidv4()
+    const player: Player = {
+      id,
+      name: playerName,
+      roomId: this.id,
+      flagsPlaced: 0,
+      cellsRevealed: 0,
+      alive: true,
+      finished: false,
+      finishTime: null,
+    }
+    this.players.push(player)
+    this.sockets.set(id, ws)
+
+    if (this.players.length === 1) {
+      this.creatorId = id
+    }
+    return player
+  }
+
+  removePlayer(playerId: string): void {
+    this.players = this.players.filter(p => p.id !== playerId)
+    this.sockets.delete(playerId)
+    if (this.creatorId === playerId && this.players.length > 0) {
+      this.creatorId = this.players[0].id
+    }
+  }
+
+  getSocket(playerId: string): WebSocket | undefined {
+    return this.sockets.get(playerId)
+  }
+
+  hasPlayer(playerId: string): boolean {
+    return this.players.some(p => p.id === playerId)
+  }
+
+  startGame(): void {
+    if (this.phase === 'playing') return
+    this.phase = 'playing'
+    this.startedAt = Date.now()
+
+    for (const p of this.players) {
+      p.alive = true
+      p.finished = false
+      p.finishTime = null
+      p.flagsPlaced = 0
+      p.cellsRevealed = 0
+    }
+
+    if (this.mode === 'race') {
+      // Generate one master layout, clone per player
+      this.mineLayout = generateMineLayout(this.config)
+      this.boards.clear()
+      for (const p of this.players) {
+        const board = buildBoardFromMines(this.config, this.mineLayout)
+        this.boards.set(p.id, board)
+        const visible = boardToVisible(board, false)
+        this.sendTo(p.id, {
+          type: 'game_started',
+          payload: {
+            board: visible,
+            config: this.config,
+            mode: this.mode,
+            players: this.players,
+          },
+        })
+      }
+    } else {
+      // Battle / Co-op: shared board
+      this.sharedBoard = generateBoard(this.config)
+      const visible = boardToVisible(this.sharedBoard, false)
+      this.broadcast({
+        type: 'game_started',
+        payload: {
+          board: visible,
+          config: this.config,
+          mode: this.mode,
+          players: this.players,
+        },
+      })
+    }
+  }
+
+  handleReveal(playerId: string, x: number, y: number): void {
+    if (this.phase !== 'playing') return
+
+    const player = this.players.find(p => p.id === playerId)
+    if (!player || !player.alive || player.finished) return
+
+    const board = this.mode === 'race'
+      ? this.boards.get(playerId)!
+      : this.sharedBoard!
+
+    if (!board) return
+
+    const { cells, hitMine } = revealCell(board, x, y, this.config)
+
+    if (cells.length === 0) return
+
+    if (hitMine) {
+      player.alive = false
+      player.finished = true
+
+      if (this.mode === 'coop') {
+        // All players lose
+        for (const p of this.players) {
+          p.alive = false
+          p.finished = true
+        }
+        this.phase = 'finished'
+        // Send all mine positions to all players
+        const fullVisible = boardToVisible(this.sharedBoard!, true)
+        this.broadcast({ type: 'board_update', payload: { cells: fullVisible } })
+        this.broadcast({
+          type: 'game_over',
+          payload: {
+            winnerId: undefined,
+            players: this.players.map(p => ({
+              playerId: p.id,
+              alive: false,
+              finished: true,
+              finishTime: null,
+              startTime: this.startedAt!,
+            })),
+            reason: 'coop_mine',
+          },
+        })
+        return
+      }
+
+      // Send mine reveal to all (battle) or just the player (race)
+      if (this.mode === 'battle') {
+        this.broadcast({ type: 'board_update', payload: { cells } })
+      } else {
+        this.sendTo(playerId, { type: 'board_update', payload: { cells } })
+      }
+
+      this.broadcastPlayerUpdate(player)
+
+      // Check if battle is over
+      if (this.mode === 'battle') {
+        const alive = this.players.filter(p => p.alive)
+        if (alive.length <= 1) {
+          this.phase = 'finished'
+          this.broadcast({
+            type: 'game_over',
+            payload: {
+              winnerId: alive[0]?.id,
+              players: this.players.map(p => ({
+                playerId: p.id,
+                alive: p.alive,
+                finished: p.finished,
+                finishTime: p.finishTime,
+                startTime: this.startedAt!,
+              })),
+              reason: alive.length === 0 ? 'all_eliminated' : 'win_clear',
+            },
+          })
+        }
+      } else {
+        // race: check if all eliminated/finished
+        this.checkRaceComplete()
+      }
+      return
+    }
+
+    // Normal reveal — count safe cells revealed
+    let safeCount = 0
+    for (const c of cells) {
+      if (c.adjacentMines > 0 || c.adjacentMines === 0) safeCount++ // count non-mine reveals
+    }
+    player.cellsRevealed += safeCount
+
+    if (this.mode === 'race') {
+      this.sendTo(playerId, { type: 'board_update', payload: { cells } })
+    } else {
+      this.broadcast({ type: 'board_update', payload: { cells } })
+    }
+
+    this.broadcastPlayerUpdate(player)
+
+    // Check win
+    if (checkWin(board, this.config)) {
+      player.finished = true
+      player.finishTime = this.startedAt ? (Date.now() - this.startedAt) / 1000 : 0
+
+      if (this.mode === 'battle') {
+        this.phase = 'finished'
+        this.broadcast({
+          type: 'game_over',
+          payload: {
+            winnerId: player.id,
+            players: this.players.map(p => ({
+              playerId: p.id,
+              alive: p.alive,
+              finished: p.finished,
+              finishTime: p.finishTime,
+              startTime: this.startedAt!,
+            })),
+            reason: 'win_clear',
+          },
+        })
+      } else if (this.mode === 'race') {
+        this.broadcastPlayerUpdate(player)
+        this.checkRaceComplete()
+      } else {
+        // coop: everyone wins
+        for (const p of this.players) {
+          p.finished = true
+          p.finishTime = player.finishTime
+        }
+        this.phase = 'finished'
+        this.broadcast({
+          type: 'game_over',
+          payload: {
+            winnerId: undefined,
+            players: this.players.map(p => ({
+              playerId: p.id,
+              alive: true,
+              finished: true,
+              finishTime: p.finishTime,
+              startTime: this.startedAt!,
+            })),
+            reason: 'coop_complete',
+          },
+        })
+      }
+    }
+  }
+
+  handleFlag(playerId: string, x: number, y: number): void {
+    if (this.phase !== 'playing') return
+
+    const player = this.players.find(p => p.id === playerId)
+    if (!player || !player.alive || player.finished) return
+
+    const board = this.mode === 'race'
+      ? this.boards.get(playerId)!
+      : this.sharedBoard!
+
+    if (!board) return
+
+    const cell = board[y]?.[x]
+    if (!cell || cell.revealed) return
+
+    const wasFlagged = cell.flagged
+    const newFlagged = toggleFlag(board, x, y)
+
+    if (wasFlagged !== newFlagged) {
+      player.flagsPlaced += newFlagged ? 1 : -1
+    }
+
+    const cellUpdate: CellVisible = {
+      x, y,
+      revealed: cell.revealed,
+      flagged: cell.flagged,
+      adjacentMines: cell.adjacentMines,
+    }
+
+    if (this.mode === 'race') {
+      this.sendTo(playerId, { type: 'board_update', payload: { cells: [cellUpdate] } })
+    } else {
+      this.broadcast({ type: 'board_update', payload: { cells: [cellUpdate] } })
+    }
+
+    this.broadcastPlayerUpdate(player)
+  }
+
+  resetForRematch(): void {
+    this.phase = 'waiting'
+    this.startedAt = null
+    this.sharedBoard = null
+    this.boards.clear()
+    this.mineLayout = []
+
+    for (const p of this.players) {
+      p.alive = true
+      p.finished = false
+      p.finishTime = null
+      p.flagsPlaced = 0
+      p.cellsRevealed = 0
+    }
+
+    this.broadcast({
+      type: 'state',
+      payload: {
+        roomId: this.id,
+        mode: this.mode,
+        difficulty: this.difficulty,
+        phase: this.phase,
+        players: this.players,
+        creatorId: this.creatorId,
+      },
+    })
+  }
+
+  getSummary(): RoomSummary {
+    return {
+      roomId: this.id,
+      mode: this.mode,
+      difficulty: this.difficulty,
+      playerCount: this.players.length,
+      phase: this.phase,
+    }
+  }
+
+  private checkRaceComplete(): void {
+    const allDone = this.players.every(p => p.finished)
+    if (allDone) {
+      this.phase = 'finished'
+      this.broadcast({
+        type: 'game_over',
+        payload: {
+          winnerId: this.players
+            .filter(p => p.alive)
+            .sort((a, b) => (a.finishTime ?? Infinity) - (b.finishTime ?? Infinity))[0]?.id,
+          players: this.players.map(p => ({
+            playerId: p.id,
+            alive: p.alive,
+            finished: p.finished,
+            finishTime: p.finishTime,
+            startTime: this.startedAt!,
+          })),
+          reason: 'win_speed',
+        },
+      })
+    }
+  }
+
+  private broadcastPlayerUpdate(player: Player): void {
+    this.broadcast({
+      type: 'player_update',
+      payload: {
+        playerId: player.id,
+        flagsPlaced: player.flagsPlaced,
+        cellsRevealed: player.cellsRevealed,
+        alive: player.alive,
+        finished: player.finished,
+        finishTime: player.finishTime,
+      },
+    })
+  }
+
+  sendTo(playerId: string, msg: ServerMessage): void {
+    const ws = this.sockets.get(playerId)
+    if (ws && ws.readyState === 1) { // WebSocket.OPEN
+      ws.send(JSON.stringify(msg))
+    }
+  }
+
+  broadcast(msg: ServerMessage): void {
+    const data = JSON.stringify(msg)
+    for (const ws of this.sockets.values()) {
+      if (ws.readyState === ws.OPEN) {
+        ws.send(data)
+      }
+    }
+  }
+}

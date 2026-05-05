@@ -1,0 +1,36 @@
+{
+  "name": "minesweeper",
+  "version": "1.0.0",
+  "description": "Multiplayer minesweeper with three game modes",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "dev:server": "tsx watch server/index.ts",
+    "dev:all": "npm run dev:server & npm run dev",
+    "build": "vite build && tsc -p server/tsconfig.json",
+    "preview": "vite preview",
+    "start": "node dist-server/server/index.js"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.30.3",
+    "sonner": "^2.0.7",
+    "uuid": "^14.0.0",
+    "ws": "^8.20.0",
+    "zustand": "^5.0.13"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@types/ws": "^8.18.1",
+    "@vitejs/plugin-react": "^4.7.0",
+    "autoprefixer": "^10.5.0",
+    "postcss": "^8.5.14",
+    "tailwindcss": "^3.4.19",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "vite": "^5.4.21"
+  }
+}
