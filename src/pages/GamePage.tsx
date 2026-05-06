@@ -113,7 +113,7 @@ export default function GamePage() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center gap-5 p-4">
       <div className="bg-white border border-[#e8ddcc] rounded-2xl shadow-lg p-6 flex flex-col gap-5
-                      max-w-full overflow-x-auto">
+                      w-fit max-w-full overflow-x-auto">
         <Header />
         <div className="flex gap-4 items-start max-md:flex-col max-md:items-center">
           <Board />
