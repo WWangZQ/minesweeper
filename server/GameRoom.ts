@@ -532,6 +532,7 @@ export class GameRoom {
       mode: this.mode,
       difficulty: this.difficulty,
       playerCount: this.players.length,
+      maxPlayers: this.mode === 'coop' ? 4 : 2,
       phase: this.phase,
     }
   }

@@ -55,6 +55,7 @@ export interface RoomSummary {
   mode: GameMode
   difficulty: Difficulty
   playerCount: number
+  maxPlayers: number
   phase: GamePhase
 }
 

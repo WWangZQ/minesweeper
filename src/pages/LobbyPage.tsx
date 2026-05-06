@@ -74,7 +74,11 @@ export default function LobbyPage() {
   }, [navigate])
 
   function handleCreateRoom() {
-    const name = nameInput.trim() || '玩家'
+    const name = nameInput.trim()
+    if (!name) {
+      toast.error('请先输入昵称')
+      return
+    }
     setPlayerName(name)
     wsClient.send({
       type: 'create_room',
@@ -83,7 +87,11 @@ export default function LobbyPage() {
   }
 
   function handleJoinRoom(roomId: string) {
-    const name = nameInput.trim() || '玩家'
+    const name = nameInput.trim()
+    if (!name) {
+      toast.error('请先输入昵称')
+      return
+    }
     setPlayerName(name)
     wsClient.send({
       type: 'join_room',
@@ -214,7 +222,7 @@ export default function LobbyPage() {
                   <div className="flex items-center gap-3">
                     <span className="text-lg font-mono font-bold text-warm-accent">{r.roomId}</span>
                     <span className="text-xs text-warm-text-dim">
-                      {modeLabels[r.mode]} · {diffLabels[r.difficulty]} · {r.playerCount}/8
+                      {modeLabels[r.mode]} · {diffLabels[r.difficulty]} · {r.playerCount}/{r.maxPlayers}
                     </span>
                     {r.phase === 'playing' && (
                       <span className="text-[10px] text-red-500 font-semibold">游戏中</span>
@@ -222,7 +230,7 @@ export default function LobbyPage() {
                   </div>
                   <button
                     onClick={() => handleJoinRoom(r.roomId)}
-                    disabled={r.phase === 'playing'}
+                    disabled={r.phase === 'playing' || r.playerCount >= r.maxPlayers}
                     className="px-4 py-1.5 text-xs font-semibold rounded-lg border border-warm-accent
                                text-warm-accent hover:bg-warm-accent-soft transition-all
                                disabled:opacity-30 disabled:cursor-not-allowed"

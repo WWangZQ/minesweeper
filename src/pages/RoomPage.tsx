@@ -145,7 +145,7 @@ export default function RoomPage() {
 
         {/* Players */}
         <div className="flex flex-col gap-2">
-          <h3 className="text-sm font-semibold text-warm-text-dim">玩家 ({players.length}/8)</h3>
+          <h3 className="text-sm font-semibold text-warm-text-dim">玩家 ({players.length}/{mode === 'coop' ? 4 : 2})</h3>
           {players.map((p, i) => (
             <div
               key={p.id}

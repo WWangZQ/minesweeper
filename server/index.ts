@@ -105,13 +105,15 @@ function handleMessage(ws: WebSocket, msg: ClientMessage): void {
 
       send(ws, { type: 'room_created', payload: { roomId } })
       send(ws, { type: 'room_joined', payload: { roomId, players: room.players } })
+      send(ws, { type: 'state', payload: { roomId, mode: room.mode, difficulty: room.difficulty, phase: room.phase, players: room.players, creatorId: room.creatorId } })
       break
     }
 
     case 'join_room': {
       const room = rooms.get(msg.payload.roomId)
       if (!room) { send(ws, { type: 'error', payload: { message: '房间不存在' } }); return }
-      if (room.players.length >= 8) { send(ws, { type: 'error', payload: { message: '房间已满' } }); return }
+      const maxPlayers = room.mode === 'coop' ? 4 : 2
+      if (room.players.length >= maxPlayers) { send(ws, { type: 'error', payload: { message: '房间已满' } }); return }
       if (room.phase === 'playing') { send(ws, { type: 'error', payload: { message: '游戏已开始' } }); return }
 
       const player = room.addPlayer(ws, msg.payload.playerName)
@@ -119,6 +121,7 @@ function handleMessage(ws: WebSocket, msg: ClientMessage): void {
       conn.roomId = msg.payload.roomId
 
       send(ws, { type: 'room_joined', payload: { roomId: room.id, players: room.players } })
+      send(ws, { type: 'state', payload: { roomId: room.id, mode: room.mode, difficulty: room.difficulty, phase: room.phase, players: room.players, creatorId: room.creatorId } })
       room.broadcast({ type: 'player_joined', payload: { player } })
       break
     }
