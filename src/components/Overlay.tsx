@@ -54,7 +54,7 @@ export default function Overlay() {
   const isTie = gameOverPayload?.reason === 'tie'
   const isWinner = gameOverPayload?.winnerId === myPlayerId
   const battleElimWin = mode === 'battle' && alive && gameOverPayload?.reason !== 'win_clear'
-  const won = isWinner || battleElimWin || (alive && finished && mode !== 'battle')
+  const won = isWinner || battleElimWin || (mode === 'coop' && alive && finished)
 
   let icon = '💣'
   let title = '踩到雷了'
@@ -85,10 +85,20 @@ export default function Overlay() {
     title = '踩到雷了'
     subtitle = '对方获胜，再来一局吧'
     titleColor = '#dc2626'
+  } else if (mode === 'race' && !alive) {
+    icon = '💥'
+    title = '踩到雷了'
+    subtitle = '对方获胜，再来一局吧'
+    titleColor = '#dc2626'
   } else if (mode === 'battle' && gameOverPayload?.reason === 'win_clear') {
     icon = '📉'
     title = '棋差一着'
     subtitle = '翻开格子数不敌对方，再来一局'
+    titleColor = '#dc2626'
+  } else if (mode === 'race') {
+    icon = '⏱️'
+    title = '慢了一步'
+    subtitle = '对方更快完成，再来一局'
     titleColor = '#dc2626'
   }
 
