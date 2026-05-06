@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { useWebSocket } from '../hooks/useWebSocket'
 import { wsClient } from '../services/wsClient'
 import { useGameStore } from '../stores/gameStore'
 import { useLobbyStore } from '../stores/lobbyStore'
@@ -9,6 +10,7 @@ import PlayerList from '../components/PlayerList'
 import Overlay from '../components/Overlay'
 
 export default function GamePage() {
+  useWebSocket()
   const { roomId } = useParams<{ roomId: string }>()
   const navigate = useNavigate()
 

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import { toast } from 'sonner'
+import { useWebSocket } from '../hooks/useWebSocket'
 import { wsClient } from '../services/wsClient'
 import { useGameStore } from '../stores/gameStore'
 import { useLobbyStore } from '../stores/lobbyStore'
@@ -12,6 +13,8 @@ const AVATAR_COLORS = [
 ]
 
 export default function RoomPage() {
+  useWebSocket()
+
   const { roomId } = useParams<{ roomId: string }>()
   const navigate = useNavigate()
   const location = useLocation()
