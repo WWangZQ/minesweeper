@@ -238,11 +238,20 @@ export class GameRoom {
       player.finishTime = this.startedAt ? (Date.now() - this.startedAt) / 1000 : 0
 
       if (this.mode === 'battle') {
+        // Board cleared with no mines hit — compare cellsRevealed to determine winner
+        for (const p of this.players) {
+          if (!p.finished) p.finished = true
+          if (p.finishTime == null) p.finishTime = player.finishTime
+        }
         this.phase = 'finished'
+        const alivePlayers = this.players.filter(p => p.alive)
+        const maxRevealed = Math.max(...alivePlayers.map(p => p.cellsRevealed))
+        const topPlayers = alivePlayers.filter(p => p.cellsRevealed === maxRevealed)
+        const winnerId = topPlayers.length === 1 ? topPlayers[0].id : undefined
         this.broadcast({
           type: 'game_over',
           payload: {
-            winnerId: player.id,
+            winnerId,
             players: this.players.map(p => ({
               playerId: p.id,
               alive: p.alive,
@@ -250,7 +259,7 @@ export class GameRoom {
               finishTime: p.finishTime,
               startTime: this.startedAt!,
             })),
-            reason: 'win_clear',
+            reason: winnerId ? 'win_clear' : 'tie',
           },
         })
       } else if (this.mode === 'race') {
@@ -416,11 +425,20 @@ export class GameRoom {
       player.finishTime = this.startedAt ? (Date.now() - this.startedAt) / 1000 : 0
 
       if (this.mode === 'battle') {
+        // Board cleared with no mines hit — compare cellsRevealed to determine winner
+        for (const p of this.players) {
+          if (!p.finished) p.finished = true
+          if (p.finishTime == null) p.finishTime = player.finishTime
+        }
         this.phase = 'finished'
+        const alivePlayers = this.players.filter(p => p.alive)
+        const maxRevealed = Math.max(...alivePlayers.map(p => p.cellsRevealed))
+        const topPlayers = alivePlayers.filter(p => p.cellsRevealed === maxRevealed)
+        const winnerId = topPlayers.length === 1 ? topPlayers[0].id : undefined
         this.broadcast({
           type: 'game_over',
           payload: {
-            winnerId: player.id,
+            winnerId,
             players: this.players.map(p => ({
               playerId: p.id,
               alive: p.alive,
@@ -428,7 +446,7 @@ export class GameRoom {
               finishTime: p.finishTime,
               startTime: this.startedAt!,
             })),
-            reason: 'win_clear',
+            reason: winnerId ? 'win_clear' : 'tie',
           },
         })
       } else if (this.mode === 'race') {

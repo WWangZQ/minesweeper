@@ -18,23 +18,30 @@ export default function Overlay() {
 
   // Spawn confetti on win
   useEffect(() => {
-    if (phase === 'finished' && alive && finished) {
-      const emojis = ['🎉', '✨', '🌟', '💫', '🎊', '🏆', '👏', '🔥', '💯', '⭐']
-      const fragments: HTMLSpanElement[] = []
-      for (let i = 0; i < 30; i++) {
-        const el = document.createElement('span')
-        el.className = 'confetti'
-        el.textContent = emojis[Math.floor(Math.random() * emojis.length)]
-        el.style.left = Math.random() * 100 + '%'
-        el.style.top = -(Math.random() * 20 + 10) + 'px'
-        el.style.animationDuration = (Math.random() * 2 + 2) + 's'
-        el.style.animationDelay = Math.random() * 0.6 + 's'
-        document.body.appendChild(el)
-        fragments.push(el)
+    if (phase === 'finished') {
+      const isTie = gameOverPayload?.reason === 'tie'
+      const isWinner = gameOverPayload?.winnerId === myPlayerId
+      const battleWin = mode === 'battle' && alive && gameOverPayload?.reason !== 'win_clear'
+      const coopWin = mode === 'coop' && alive && finished
+      const raceWin = mode === 'race' && alive && finished
+      if (isWinner || battleWin || coopWin || raceWin) {
+        const emojis = ['🎉', '✨', '🌟', '💫', '🎊', '🏆', '👏', '🔥', '💯', '⭐']
+        const fragments: HTMLSpanElement[] = []
+        for (let i = 0; i < 30; i++) {
+          const el = document.createElement('span')
+          el.className = 'confetti'
+          el.textContent = emojis[Math.floor(Math.random() * emojis.length)]
+          el.style.left = Math.random() * 100 + '%'
+          el.style.top = -(Math.random() * 20 + 10) + 'px'
+          el.style.animationDuration = (Math.random() * 2 + 2) + 's'
+          el.style.animationDelay = Math.random() * 0.6 + 's'
+          document.body.appendChild(el)
+          fragments.push(el)
+        }
+        setTimeout(() => fragments.forEach(el => el.remove()), 3500)
       }
-      setTimeout(() => fragments.forEach(el => el.remove()), 3500)
     }
-  }, [phase, alive, finished])
+  }, [phase, alive, finished, gameOverPayload, mode, myPlayerId])
 
   function handleRematch() {
     wsClient.send({ type: 'rematch', payload: { roomId } })
@@ -43,13 +50,23 @@ export default function Overlay() {
 
   if (!show) return null
 
-  const won = alive && finished
+  // Determine win/loss/tie
+  const isTie = gameOverPayload?.reason === 'tie'
+  const isWinner = gameOverPayload?.winnerId === myPlayerId
+  const battleElimWin = mode === 'battle' && alive && gameOverPayload?.reason !== 'win_clear'
+  const won = isWinner || battleElimWin || (alive && finished && mode !== 'battle')
+
   let icon = '💣'
   let title = '踩到雷了'
   let subtitle = '别灰心，再来一局吧'
   let titleColor = '#dc2626'
 
-  if (won) {
+  if (isTie) {
+    icon = '🤝'
+    title = '平局！'
+    subtitle = '双方不分胜负，再来一局'
+    titleColor = '#d97706'
+  } else if (won) {
     if (mode === 'coop') {
       icon = '🤝'
       title = '合作胜利！'
@@ -63,7 +80,21 @@ export default function Overlay() {
   } else if (mode === 'coop' && !alive) {
     title = '协作失败'
     subtitle = '队员踩雷，再接再厉！'
+  } else if (mode === 'battle' && !alive) {
+    icon = '💥'
+    title = '踩到雷了'
+    subtitle = '对方获胜，再来一局吧'
+    titleColor = '#dc2626'
   }
+
+  // Show cellsRevealed comparison for battle mode when board is cleared
+  const battleStats = mode === 'battle' && gameOverPayload?.reason === 'win_clear'
+    ? gameOverPayload.players.map((p: any) => ({
+        ...p,
+        cellsRevealed: useGameStore.getState().players.find(pl => pl.id === p.playerId)?.cellsRevealed ?? 0,
+        name: useGameStore.getState().players.find(pl => pl.id === p.playerId)?.name ?? '?',
+      })).sort((a: any, b: any) => b.cellsRevealed - a.cellsRevealed)
+    : null
 
   return (
     <div className={`fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50
@@ -91,6 +122,20 @@ export default function Overlay() {
                   </div>
                 )
               })}
+          </div>
+        )}
+
+        {/* Battle stats when board cleared */}
+        {battleStats && (
+          <div className="mb-6 text-left">
+            <p className="text-xs font-semibold text-[#8b8070] mb-2">翻开格子数</p>
+            {battleStats.map((p: any) => (
+              <div key={p.playerId} className={`flex justify-between text-sm py-1 px-2 rounded
+                ${p.playerId === myPlayerId ? 'bg-amber-50 font-semibold' : ''}`}>
+                <span>{p.name}{p.playerId === gameOverPayload?.winnerId ? ' 👑' : ''}</span>
+                <span className="text-[#d97706]">{p.cellsRevealed} 格</span>
+              </div>
+            ))}
           </div>
         )}
 
