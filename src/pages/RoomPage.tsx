@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import { toast } from 'sonner'
 import { useWebSocket } from '../hooks/useWebSocket'
@@ -27,13 +27,10 @@ export default function RoomPage() {
 
   const setMyPlayerId = useGameStore((s) => s.setMyPlayerId)
   const setRoomId = useGameStore((s) => s.setRoomId)
-  const initBoard = useGameStore((s) => s.initBoard)
-  const setConfig = useGameStore((s) => s.setConfig)
-  const setGameMode = useGameStore((s) => s.setMode)
-  const setGamePlayers = useGameStore((s) => s.setPlayers)
-  const startTimer = useGameStore((s) => s.startTimer)
-  const setPhase = useGameStore((s) => s.setPhase)
-  const myPlayerId = useGameStore((s) => s.myPlayerId)
+
+  // Use refs so WS handlers always have latest values without re-registration
+  const roomIdRef = useRef(roomId)
+  roomIdRef.current = roomId
 
   useEffect(() => {
     setRoomId(roomId || '')
@@ -45,47 +42,44 @@ export default function RoomPage() {
       setMode(navState.mode || '')
       setDifficulty(navState.difficulty || '')
       setCreatorId(navState.creatorId || '')
-      setGamePlayers(navState.players || [])
       if (navState.myPlayerId) {
         setMyPlayerId(navState.myPlayerId)
       }
     }
 
     function handleRoomJoined(payload: any) {
-      if (payload.roomId === roomId) {
+      if (payload.roomId === roomIdRef.current) {
         setPlayers(payload.players)
-        setGamePlayers(payload.players)
       }
     }
 
     function handlePlayerJoined(payload: any) {
       setPlayers((prev) => [...prev.filter(p => p.id !== payload.player.id), payload.player])
-      setGamePlayers((prev) => [...prev.filter(p => p.id !== payload.player.id), payload.player])
     }
 
     function handlePlayerLeft(payload: any) {
       setPlayers((prev) => prev.filter(p => p.id !== payload.playerId))
-      setGamePlayers((prev) => prev.filter(p => p.id !== payload.playerId))
     }
 
     function handleGameStarted(payload: any) {
+      // Use the game store directly — no stale closures
+      const { initBoard, setMode, setPlayers, startTimer } = useGameStore.getState()
       initBoard(payload.board, payload.config)
-      setConfig(payload.config)
-      setGameMode(payload.mode)
-      setGamePlayers(payload.players)
-      setPhase('playing')
+      setMode(payload.mode)
+      setPlayers(payload.players)
+      useGameStore.getState().setPhase('playing')
       startTimer()
-      navigate(`/game/${roomId}`)
+      navigate(`/game/${roomIdRef.current}`)
     }
 
     function handleState(payload: any) {
-      if (payload.roomId === roomId) {
+      if (payload.roomId === roomIdRef.current) {
         setPlayers(payload.players)
-        setGamePlayers(payload.players)
         setMode(payload.mode)
         setDifficulty(payload.difficulty)
         setCreatorId(payload.creatorId)
-        setPhase(payload.phase)
+        useGameStore.getState().setPhase(payload.phase)
+        useGameStore.getState().setPlayers(payload.players)
       }
     }
 
