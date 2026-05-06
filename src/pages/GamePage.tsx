@@ -80,9 +80,7 @@ export default function GamePage() {
 
     function handlePlayerLeft(payload: any) {
       if (payload.playerId !== playerId) {
-        // Opponent left — go back to lobby
-        reset()
-        navigate('/')
+        useGameStore.getState().setOpponentLeft()
       }
     }
 

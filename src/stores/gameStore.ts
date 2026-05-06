@@ -24,6 +24,7 @@ interface GameState {
   rematchVoted: boolean
   rematchVotes: number
   rematchTotal: number
+  opponentLeft: boolean
 
   initBoard: (cells: CellVisible[], config: DifficultyConfig) => void
   patchCells: (cells: CellVisible[]) => void
@@ -37,6 +38,7 @@ interface GameState {
   setElapsed: (seconds: number) => void
   setGameOverPayload: (p: any) => void
   setRematchVote: (voted: boolean, votes: number, total: number) => void
+  setOpponentLeft: () => void
   startTimer: () => void
   stopTimer: () => void
   reset: () => void
@@ -62,6 +64,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   rematchVoted: false,
   rematchVotes: 0,
   rematchTotal: 0,
+  opponentLeft: false,
 
   initBoard: (cells, config) => {
     const board: CellVisible[][] = []
@@ -114,6 +117,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   setElapsed: (seconds) => set({ elapsedSeconds: seconds }),
   setGameOverPayload: (p) => set({ gameOverPayload: p }),
   setRematchVote: (voted, votes, total) => set({ rematchVoted: voted, rematchVotes: votes, rematchTotal: total }),
+  setOpponentLeft: () => set({ opponentLeft: true }),
 
   startTimer: () => {
     const existing = get().timerInterval
@@ -144,5 +148,6 @@ export const useGameStore = create<GameState>((set, get) => ({
     rematchVoted: false,
     rematchVotes: 0,
     rematchTotal: 0,
+    opponentLeft: false,
   }),
 }))

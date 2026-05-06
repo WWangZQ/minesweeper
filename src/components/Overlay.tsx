@@ -15,6 +15,7 @@ export default function Overlay() {
   const rematchVoted = useGameStore((s) => s.rematchVoted)
   const rematchVotes = useGameStore((s) => s.rematchVotes)
   const rematchTotal = useGameStore((s) => s.rematchTotal)
+  const opponentLeft = useGameStore((s) => s.opponentLeft)
 
   const show = phase === 'finished'
 
@@ -161,6 +162,9 @@ export default function Overlay() {
           </div>
         )}
 
+        {opponentLeft && (
+          <p className="text-xs text-[#8b8070] mb-3">对方已退出房间</p>
+        )}
         <div className="flex gap-3 justify-center">
           <button
             onClick={handleLeaveRoom}
@@ -169,17 +173,19 @@ export default function Overlay() {
           >
             退出房间
           </button>
-          <button
-            onClick={handleRematch}
-            disabled={rematchVoted}
-            className="px-8 py-2.5 text-white rounded-xl font-semibold transition-all shadow-md
-                       disabled:opacity-60 disabled:cursor-not-allowed
-                       bg-[#d97706] hover:bg-[#b65f00] active:scale-[0.97] disabled:active:scale-100"
-          >
-            {rematchVoted
-              ? `等待中 (${rematchVotes}/${rematchTotal})`
-              : '再来一局'}
-          </button>
+          {!opponentLeft && (
+            <button
+              onClick={handleRematch}
+              disabled={rematchVoted}
+              className="px-8 py-2.5 text-white rounded-xl font-semibold transition-all shadow-md
+                         disabled:opacity-60 disabled:cursor-not-allowed
+                         bg-[#d97706] hover:bg-[#b65f00] active:scale-[0.97] disabled:active:scale-100"
+            >
+              {rematchVoted
+                ? `等待中 (${rematchVotes}/${rematchTotal})`
+                : '再来一局'}
+            </button>
+          )}
         </div>
       </div>
     </div>
