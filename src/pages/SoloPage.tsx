@@ -113,7 +113,7 @@ export default function SoloPage() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4">
-      <div className="bg-warm-surface border border-warm-border rounded-2xl shadow-lg p-6 flex flex-col gap-5 w-fit max-w-full overflow-x-auto">
+      <div className="bg-warm-surface border border-warm-border rounded-2xl shadow-lg p-6 flex flex-col gap-5">
         {/* Mode label and face */}
         {phase === 'idle' ? (
           <>
