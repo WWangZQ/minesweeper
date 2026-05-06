@@ -50,6 +50,15 @@ export default function GamePage() {
       setPhase('finished')
       stopTimer()
       setGameOverPayload(payload)
+      // Sync myPlayer state from the payload (coop skips player_update)
+      const myEntry = payload.players?.find((p: any) => p.playerId === playerId)
+      if (myEntry) {
+        useGameStore.getState().updatePlayer(myEntry.playerId, {
+          alive: myEntry.alive,
+          finished: myEntry.finished,
+          finishTime: myEntry.finishTime,
+        })
+      }
     }
 
     function handleRematchVote(payload: any) {
