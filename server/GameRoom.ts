@@ -139,7 +139,7 @@ export class GameRoom {
     if (this.mode === 'race') {
       if (!this.raceFirstClicks.get(playerId)) {
         this.raceFirstClicks.set(playerId, true)
-        this.placeMinesInBoard(board, this.config, x, y)
+        this.placeMinesFromLayout(board, this.config, x, y)
       }
     } else if (!this.firstClickDone) {
       this.firstClickDone = true
@@ -649,6 +649,70 @@ export class GameRoom {
     for (let i = 0; i < mineCount; i++) {
       const { x, y } = positions[i]
       board[y][x].mine = true
+    }
+
+    // Recompute adjacent mine counts
+    for (let y = 0; y < config.height; y++) {
+      for (let x = 0; x < config.width; x++) {
+        if (board[y][x].mine) continue
+        let count = 0
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            if (dx === 0 && dy === 0) continue
+            const nx = x + dx
+            const ny = y + dy
+            if (nx >= 0 && nx < config.width && ny >= 0 && ny < config.height && board[ny][nx].mine) {
+              count++
+            }
+          }
+        }
+        board[y][x].adjacentMines = count
+      }
+    }
+  }
+
+  // Race mode: use shared mineLayout, skipping mines in the player's safe zone.
+  // Pad with extra random mines to maintain the correct mine count.
+  private placeMinesFromLayout(board: CellState[][], config: DifficultyConfig, safeX: number, safeY: number): void {
+    const safeZone = new Set<string>()
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        const nx = safeX + dx
+        const ny = safeY + dy
+        if (nx >= 0 && nx < config.width && ny >= 0 && ny < config.height) {
+          safeZone.add(`${nx},${ny}`)
+        }
+      }
+    }
+
+    // Place mines from the shared layout, skipping safe zone
+    let placed = 0
+    for (const { x, y } of this.mineLayout) {
+      if (!safeZone.has(`${x},${y}`)) {
+        board[y][x].mine = true
+        placed++
+      }
+    }
+
+    // If some mines were in the safe zone, pad with random ones outside safe zone
+    if (placed < config.mines) {
+      const need = config.mines - placed
+      const candidates: { x: number; y: number }[] = []
+      for (let y = 0; y < config.height; y++) {
+        for (let x = 0; x < config.width; x++) {
+          if (!board[y][x].mine && !safeZone.has(`${x},${y}`)) {
+            candidates.push({ x, y })
+          }
+        }
+      }
+      for (let i = candidates.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1))
+        ;[candidates[i], candidates[j]] = [candidates[j], candidates[i]]
+      }
+      for (let i = 0; i < Math.min(need, candidates.length); i++) {
+        const { x, y } = candidates[i]
+        board[y][x].mine = true
+      }
     }
 
     // Recompute adjacent mine counts
