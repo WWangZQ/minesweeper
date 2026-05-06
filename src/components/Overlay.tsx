@@ -85,6 +85,11 @@ export default function Overlay() {
     title = '踩到雷了'
     subtitle = '对方获胜，再来一局吧'
     titleColor = '#dc2626'
+  } else if (mode === 'battle' && gameOverPayload?.reason === 'win_clear') {
+    icon = '📉'
+    title = '棋差一着'
+    subtitle = '翻开格子数不敌对方，再来一局'
+    titleColor = '#dc2626'
   }
 
   // Show cellsRevealed comparison for battle mode when board is cleared
