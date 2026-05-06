@@ -112,8 +112,8 @@ export default function SoloPage() {
   else if (phase === 'won') faceEmoji = '😎'
 
   return (
-    <div className="min-h-screen flex flex-col p-4">
-      <div className="bg-warm-surface border border-warm-border rounded-2xl shadow-lg p-6 flex flex-col gap-5 mx-auto max-w-full overflow-x-auto">
+    <div className="min-h-screen flex flex-col justify-center p-4 overflow-x-auto">
+      <div className="bg-warm-surface border border-warm-border rounded-2xl shadow-lg p-6 flex flex-col gap-5 mx-auto">
         {/* Mode label and face */}
         {phase === 'idle' ? (
           <>

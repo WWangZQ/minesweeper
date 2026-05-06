@@ -111,9 +111,9 @@ export default function GamePage() {
   }, [roomId, playerId])
 
   return (
-    <div className="min-h-screen flex flex-col p-4">
+    <div className="min-h-screen flex flex-col justify-center p-4 overflow-x-auto">
       <div className="bg-white border border-[#e8ddcc] rounded-2xl shadow-lg p-6 flex flex-col gap-5
-                      mx-auto max-w-full overflow-x-auto">
+                      mx-auto">
         <Header />
         <div className="flex gap-4 items-start max-md:flex-col max-md:items-center">
           <Board />
