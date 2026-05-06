@@ -178,6 +178,10 @@ function handleMessage(ws: WebSocket, msg: ClientMessage): void {
       break
     }
 
+    // Heartbeat — no response needed
+    case 'ping':
+      break
+
     case 'get_rooms': {
       const roomSummaries = Array.from(rooms.values()).map(r => r.getSummary())
       send(ws, { type: 'rooms_list', payload: { rooms: roomSummaries } })

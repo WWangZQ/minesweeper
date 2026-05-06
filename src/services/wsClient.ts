@@ -11,6 +11,7 @@ class WsClient {
   private intentionalClose = false
   private pendingQueue: ClientMessage[] = []
   private connectionTimeout: ReturnType<typeof setTimeout> | null = null
+  private pingInterval: ReturnType<typeof setInterval> | null = null
 
   connect(url: string): void {
     this.url = url
@@ -37,6 +38,8 @@ class WsClient {
         this.ws!.send(JSON.stringify(msg))
       }
       this.pendingQueue = []
+      // Start heartbeat to prevent idle timeout
+      this.startPing()
     }
 
     this.ws.onmessage = (event) => {
@@ -52,6 +55,7 @@ class WsClient {
     }
 
     this.ws.onclose = () => {
+      this.stopPing()
       this.dispatch('disconnected', {})
       this.scheduleReconnect()
     }
@@ -102,11 +106,28 @@ class WsClient {
 
   disconnect(): void {
     this.intentionalClose = true
+    this.stopPing()
     if (this.reconnectTimer) clearTimeout(this.reconnectTimer)
     if (this.connectionTimeout) { clearTimeout(this.connectionTimeout); this.connectionTimeout = null }
     this.pendingQueue = []
     this.ws?.close()
     this.ws = null
+  }
+
+  private startPing(): void {
+    this.stopPing()
+    this.pingInterval = setInterval(() => {
+      if (this.ws?.readyState === WebSocket.OPEN) {
+        this.ws.send(JSON.stringify({ type: 'ping' }))
+      }
+    }, 45000) // every 45 seconds
+  }
+
+  private stopPing(): void {
+    if (this.pingInterval) {
+      clearInterval(this.pingInterval)
+      this.pingInterval = null
+    }
   }
 
   get readyState(): number {

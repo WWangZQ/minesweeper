@@ -52,6 +52,7 @@ export type ClientMessage =
   | { type: 'flag_cell';    payload: { roomId: string; x: number; y: number } }
   | { type: 'chord_cell';   payload: { roomId: string; x: number; y: number } }
   | { type: 'rematch';      payload: { roomId: string } }
+  | { type: 'ping' }
   | { type: 'get_rooms' }
 
 export type ServerMessage =
