@@ -55,8 +55,8 @@ export type ClientMessage =
   | { type: 'get_rooms' }
 
 export type ServerMessage =
-  | { type: 'room_created';  payload: { roomId: string } }
-  | { type: 'room_joined';   payload: { roomId: string; players: Player[] } }
+  | { type: 'room_created';  payload: { roomId: string; mode: GameMode; difficulty: Difficulty; players: Player[]; creatorId: string } }
+  | { type: 'room_joined';   payload: { roomId: string; players: Player[]; mode: GameMode; difficulty: Difficulty; creatorId: string } }
   | { type: 'player_joined'; payload: { player: Player } }
   | { type: 'player_left';   payload: { playerId: string } }
   | { type: 'rooms_list';    payload: { rooms: RoomSummary[] } }

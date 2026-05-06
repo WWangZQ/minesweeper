@@ -103,9 +103,7 @@ function handleMessage(ws: WebSocket, msg: ClientMessage): void {
       conn.playerId = player.id
       conn.roomId = roomId
 
-      send(ws, { type: 'room_created', payload: { roomId } })
-      send(ws, { type: 'room_joined', payload: { roomId, players: room.players } })
-      send(ws, { type: 'state', payload: { roomId, mode: room.mode, difficulty: room.difficulty, phase: room.phase, players: room.players, creatorId: room.creatorId } })
+      send(ws, { type: 'room_created', payload: { roomId, mode: room.mode, difficulty: room.difficulty, players: room.players, creatorId: room.creatorId } })
       break
     }
 
@@ -120,8 +118,7 @@ function handleMessage(ws: WebSocket, msg: ClientMessage): void {
       conn.playerId = player.id
       conn.roomId = msg.payload.roomId
 
-      send(ws, { type: 'room_joined', payload: { roomId: room.id, players: room.players } })
-      send(ws, { type: 'state', payload: { roomId: room.id, mode: room.mode, difficulty: room.difficulty, phase: room.phase, players: room.players, creatorId: room.creatorId } })
+      send(ws, { type: 'room_joined', payload: { roomId: room.id, players: room.players, mode: room.mode, difficulty: room.difficulty, creatorId: room.creatorId } })
       room.broadcast({ type: 'player_joined', payload: { player } })
       break
     }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import { toast } from 'sonner'
 import { wsClient } from '../services/wsClient'
 import { useGameStore } from '../stores/gameStore'
@@ -14,6 +14,7 @@ const AVATAR_COLORS = [
 export default function RoomPage() {
   const { roomId } = useParams<{ roomId: string }>()
   const navigate = useNavigate()
+  const location = useLocation()
   const playerId = useLobbyStore((s) => s.playerId)
 
   const [players, setPlayers] = useState<Player[]>([])
@@ -34,6 +35,18 @@ export default function RoomPage() {
   useEffect(() => {
     setRoomId(roomId || '')
 
+    // Initialize from navigation state (for room creator)
+    const navState = location.state as any
+    if (navState) {
+      setPlayers(navState.players || [])
+      setMode(navState.mode || '')
+      setDifficulty(navState.difficulty || '')
+      setCreatorId(navState.creatorId || '')
+      setGamePlayers(navState.players || [])
+      // Clear navigation state to avoid stale data on refresh
+      window.history.replaceState({}, '')
+    }
+
     function handleRoomJoined(payload: any) {
       if (payload.roomId === roomId) {
         setPlayers(payload.players)
@@ -43,12 +56,12 @@ export default function RoomPage() {
 
     function handlePlayerJoined(payload: any) {
       setPlayers((prev) => [...prev.filter(p => p.id !== payload.player.id), payload.player])
-      setGamePlayers([...players, payload.player])
+      setGamePlayers((prev) => [...prev.filter(p => p.id !== payload.player.id), payload.player])
     }
 
     function handlePlayerLeft(payload: any) {
       setPlayers((prev) => prev.filter(p => p.id !== payload.playerId))
-      setGamePlayers(players.filter(p => p.id !== payload.playerId))
+      setGamePlayers((prev) => prev.filter(p => p.id !== payload.playerId))
     }
 
     function handleGameStarted(payload: any) {
