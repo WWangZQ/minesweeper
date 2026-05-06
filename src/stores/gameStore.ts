@@ -21,6 +21,9 @@ interface GameState {
   players: Player[]
   creatorId: string
   gameOverPayload: any | null
+  rematchVoted: boolean
+  rematchVotes: number
+  rematchTotal: number
 
   initBoard: (cells: CellVisible[], config: DifficultyConfig) => void
   patchCells: (cells: CellVisible[]) => void
@@ -33,6 +36,7 @@ interface GameState {
   setCreatorId: (id: string) => void
   setElapsed: (seconds: number) => void
   setGameOverPayload: (p: any) => void
+  setRematchVote: (voted: boolean, votes: number, total: number) => void
   startTimer: () => void
   stopTimer: () => void
   reset: () => void
@@ -55,6 +59,9 @@ export const useGameStore = create<GameState>((set, get) => ({
   players: [],
   creatorId: '',
   gameOverPayload: null,
+  rematchVoted: false,
+  rematchVotes: 0,
+  rematchTotal: 0,
 
   initBoard: (cells, config) => {
     const board: CellVisible[][] = []
@@ -106,6 +113,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   setCreatorId: (id) => set({ creatorId: id }),
   setElapsed: (seconds) => set({ elapsedSeconds: seconds }),
   setGameOverPayload: (p) => set({ gameOverPayload: p }),
+  setRematchVote: (voted, votes, total) => set({ rematchVoted: voted, rematchVotes: votes, rematchTotal: total }),
 
   startTimer: () => {
     const existing = get().timerInterval
@@ -133,5 +141,8 @@ export const useGameStore = create<GameState>((set, get) => ({
     finishTime: null,
     elapsedSeconds: 0,
     gameOverPayload: null,
+    rematchVoted: false,
+    rematchVotes: 0,
+    rematchTotal: 0,
   }),
 }))

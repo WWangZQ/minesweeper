@@ -82,5 +82,6 @@ export type ServerMessage =
   | { type: 'board_update';  payload: { cells: CellVisible[] } }
   | { type: 'player_update'; payload: { playerId: string; flagsPlaced: number; cellsRevealed: number; alive: boolean; finished: boolean; finishTime: number | null } }
   | { type: 'game_over';     payload: { winnerId?: string; players: { playerId: string; alive: boolean; finished: boolean; finishTime: number | null; startTime: number }[]; reason: string } }
+  | { type: 'rematch_vote';  payload: { playerId: string; votes: number; total: number } }
   | { type: 'error';         payload: { message: string } }
   | { type: 'state';         payload: { roomId: string; mode: GameMode; difficulty: Difficulty; phase: GamePhase; players: Player[]; creatorId: string } }

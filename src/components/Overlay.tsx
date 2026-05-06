@@ -12,6 +12,9 @@ export default function Overlay() {
   const mode = useGameStore((s) => s.mode)
   const roomId = useGameStore((s) => s.roomId)
   const myPlayerId = useGameStore((s) => s.myPlayerId)
+  const rematchVoted = useGameStore((s) => s.rematchVoted)
+  const rematchVotes = useGameStore((s) => s.rematchVotes)
+  const rematchTotal = useGameStore((s) => s.rematchTotal)
   const setGameOverPayload = useGameStore((s) => s.setGameOverPayload)
 
   const show = phase === 'finished'
@@ -45,7 +48,6 @@ export default function Overlay() {
 
   function handleRematch() {
     wsClient.send({ type: 'rematch', payload: { roomId } })
-    setGameOverPayload(null)
   }
 
   if (!show) return null
@@ -156,10 +158,14 @@ export default function Overlay() {
 
         <button
           onClick={handleRematch}
-          className="px-8 py-2.5 bg-[#d97706] hover:bg-[#b65f00] text-white
-                     rounded-xl font-semibold transition-all shadow-md active:scale-[0.97]"
+          disabled={rematchVoted}
+          className="px-8 py-2.5 text-white rounded-xl font-semibold transition-all shadow-md
+                     disabled:opacity-60 disabled:cursor-not-allowed
+                     bg-[#d97706] hover:bg-[#b65f00] active:scale-[0.97] disabled:active:scale-100"
         >
-          再来一局
+          {rematchVoted
+            ? `等待中 (${rematchVotes}/${rematchTotal})`
+            : '再来一局'}
         </button>
       </div>
     </div>

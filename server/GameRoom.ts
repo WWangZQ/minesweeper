@@ -25,6 +25,8 @@ export class GameRoom {
   private firstClickDone: boolean = false
   // Race mode: per-player first-click tracking
   private raceFirstClicks: Map<string, boolean> = new Map()
+  // Rematch voting
+  private rematchVotes: Set<string> = new Set()
 
   // Connection sockets: playerId → WebSocket
   private sockets: Map<string, WebSocket> = new Map()
@@ -514,34 +516,47 @@ export class GameRoom {
     this.broadcastPlayerUpdate(player)
   }
 
-  resetForRematch(): void {
-    this.phase = 'waiting'
-    this.startedAt = null
-    this.sharedBoard = null
-    this.boards.clear()
-    this.mineLayout = []
-    this.firstClickDone = false
-    this.raceFirstClicks.clear()
+  voteRematch(playerId: string): void {
+    if (this.phase !== 'finished') return
+    this.rematchVotes.add(playerId)
 
-    for (const p of this.players) {
-      p.alive = true
-      p.finished = false
-      p.finishTime = null
-      p.flagsPlaced = 0
-      p.cellsRevealed = 0
+    if (this.rematchVotes.size >= this.players.length) {
+      // Everyone voted — actually rematch
+      this.rematchVotes.clear()
+      this.phase = 'waiting'
+      this.startedAt = null
+      this.sharedBoard = null
+      this.boards.clear()
+      this.mineLayout = []
+      this.firstClickDone = false
+      this.raceFirstClicks.clear()
+
+      for (const p of this.players) {
+        p.alive = true
+        p.finished = false
+        p.finishTime = null
+        p.flagsPlaced = 0
+        p.cellsRevealed = 0
+      }
+
+      this.broadcast({
+        type: 'state',
+        payload: {
+          roomId: this.id,
+          mode: this.mode,
+          difficulty: this.difficulty,
+          phase: this.phase,
+          players: this.players,
+          creatorId: this.creatorId,
+        },
+      })
+    } else {
+      // Tell the other player(s) that someone wants a rematch
+      this.broadcast({
+        type: 'rematch_vote',
+        payload: { playerId, votes: this.rematchVotes.size, total: this.players.length },
+      })
     }
-
-    this.broadcast({
-      type: 'state',
-      payload: {
-        roomId: this.id,
-        mode: this.mode,
-        difficulty: this.difficulty,
-        phase: this.phase,
-        players: this.players,
-        creatorId: this.creatorId,
-      },
-    })
   }
 
   getSummary(): RoomSummary {

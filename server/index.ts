@@ -174,7 +174,7 @@ function handleMessage(ws: WebSocket, msg: ClientMessage): void {
     case 'rematch': {
       const room = rooms.get(msg.payload.roomId)
       if (!room) { send(ws, { type: 'error', payload: { message: '房间不存在' } }); return }
-      room.resetForRematch()
+      room.voteRematch(conn.playerId)
       break
     }
 

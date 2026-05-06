@@ -52,6 +52,14 @@ export default function GamePage() {
       setGameOverPayload(payload)
     }
 
+    function handleRematchVote(payload: any) {
+      useGameStore.getState().setRematchVote(
+        payload.playerId === playerId,
+        payload.votes,
+        payload.total,
+      )
+    }
+
     function handleGameStarted(payload: any) {
       // Already initialized in RoomPage, but handle re-entry
     }
@@ -59,10 +67,14 @@ export default function GamePage() {
     function handleState(payload: any) {
       if (payload.phase === 'waiting') {
         reset()
-        setPlayers(payload.players)
-        setMode(payload.mode)
-        setCreatorId(payload.creatorId)
-        navigate(`/room/${roomId}`)
+        navigate(`/room/${roomId}`, {
+          state: {
+            players: payload.players,
+            mode: payload.mode,
+            difficulty: payload.difficulty,
+            creatorId: payload.creatorId,
+          },
+        })
       }
     }
 
@@ -71,6 +83,7 @@ export default function GamePage() {
     wsClient.on('game_over', handleGameOver)
     wsClient.on('game_started', handleGameStarted)
     wsClient.on('state', handleState)
+    wsClient.on('rematch_vote', handleRematchVote)
 
     // Start timer if phase is playing
     const currentPhase = useGameStore.getState().phase
@@ -84,6 +97,7 @@ export default function GamePage() {
       wsClient.off('game_over', handleGameOver)
       wsClient.off('game_started', handleGameStarted)
       wsClient.off('state', handleState)
+      wsClient.off('rematch_vote', handleRematchVote)
       stopTimer()
     }
   }, [roomId, playerId])
