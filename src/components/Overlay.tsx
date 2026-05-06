@@ -15,9 +15,18 @@ export default function Overlay() {
   const rematchVoted = useGameStore((s) => s.rematchVoted)
   const rematchVotes = useGameStore((s) => s.rematchVotes)
   const rematchTotal = useGameStore((s) => s.rematchTotal)
-  const setGameOverPayload = useGameStore((s) => s.setGameOverPayload)
 
   const show = phase === 'finished'
+
+  function handleRematch() {
+    wsClient.send({ type: 'rematch', payload: { roomId } })
+  }
+
+  function handleLeaveRoom() {
+    wsClient.send({ type: 'leave_room', payload: { roomId } })
+    useGameStore.getState().reset()
+    window.location.hash = '#/'
+  }
 
   // Spawn confetti on win
   useEffect(() => {
@@ -45,10 +54,6 @@ export default function Overlay() {
       }
     }
   }, [phase, alive, finished, gameOverPayload, mode, myPlayerId])
-
-  function handleRematch() {
-    wsClient.send({ type: 'rematch', payload: { roomId } })
-  }
 
   if (!show) return null
 
@@ -156,17 +161,26 @@ export default function Overlay() {
           </div>
         )}
 
-        <button
-          onClick={handleRematch}
-          disabled={rematchVoted}
-          className="px-8 py-2.5 text-white rounded-xl font-semibold transition-all shadow-md
-                     disabled:opacity-60 disabled:cursor-not-allowed
-                     bg-[#d97706] hover:bg-[#b65f00] active:scale-[0.97] disabled:active:scale-100"
-        >
-          {rematchVoted
-            ? `等待中 (${rematchVotes}/${rematchTotal})`
-            : '再来一局'}
-        </button>
+        <div className="flex gap-3 justify-center">
+          <button
+            onClick={handleLeaveRoom}
+            className="px-6 py-2.5 border border-[#e8ddcc] rounded-xl font-semibold text-sm
+                       text-[#8b8070] hover:bg-[#f5f0e8] transition-colors"
+          >
+            退出房间
+          </button>
+          <button
+            onClick={handleRematch}
+            disabled={rematchVoted}
+            className="px-8 py-2.5 text-white rounded-xl font-semibold transition-all shadow-md
+                       disabled:opacity-60 disabled:cursor-not-allowed
+                       bg-[#d97706] hover:bg-[#b65f00] active:scale-[0.97] disabled:active:scale-100"
+          >
+            {rematchVoted
+              ? `等待中 (${rematchVotes}/${rematchTotal})`
+              : '再来一局'}
+          </button>
+        </div>
       </div>
     </div>
   )

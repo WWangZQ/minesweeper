@@ -78,12 +78,21 @@ export default function GamePage() {
       }
     }
 
+    function handlePlayerLeft(payload: any) {
+      if (payload.playerId !== playerId) {
+        // Opponent left — go back to lobby
+        reset()
+        navigate('/')
+      }
+    }
+
     wsClient.on('board_update', handleBoardUpdate)
     wsClient.on('player_update', handlePlayerUpdate)
     wsClient.on('game_over', handleGameOver)
     wsClient.on('game_started', handleGameStarted)
     wsClient.on('state', handleState)
     wsClient.on('rematch_vote', handleRematchVote)
+    wsClient.on('player_left', handlePlayerLeft)
 
     // Start timer if phase is playing
     const currentPhase = useGameStore.getState().phase
@@ -98,6 +107,7 @@ export default function GamePage() {
       wsClient.off('game_started', handleGameStarted)
       wsClient.off('state', handleState)
       wsClient.off('rematch_vote', handleRematchVote)
+      wsClient.off('player_left', handlePlayerLeft)
       stopTimer()
     }
   }, [roomId, playerId])
