@@ -43,8 +43,6 @@ export default function RoomPage() {
       setDifficulty(navState.difficulty || '')
       setCreatorId(navState.creatorId || '')
       setGamePlayers(navState.players || [])
-      // Clear navigation state to avoid stale data on refresh
-      window.history.replaceState({}, '')
     }
 
     function handleRoomJoined(payload: any) {
@@ -77,6 +75,7 @@ export default function RoomPage() {
     function handleState(payload: any) {
       if (payload.roomId === roomId) {
         setPlayers(payload.players)
+        setGamePlayers(payload.players)
         setMode(payload.mode)
         setDifficulty(payload.difficulty)
         setCreatorId(payload.creatorId)

@@ -120,6 +120,8 @@ function handleMessage(ws: WebSocket, msg: ClientMessage): void {
 
       send(ws, { type: 'room_joined', payload: { roomId: room.id, players: room.players, mode: room.mode, difficulty: room.difficulty, creatorId: room.creatorId } })
       room.broadcast({ type: 'player_joined', payload: { player } })
+      // Sync state to everyone in room so player lists are consistent
+      room.broadcast({ type: 'state', payload: { roomId: room.id, mode: room.mode, difficulty: room.difficulty, phase: room.phase, players: room.players, creatorId: room.creatorId } })
       break
     }
 
@@ -128,6 +130,7 @@ function handleMessage(ws: WebSocket, msg: ClientMessage): void {
       if (room && conn.playerId) {
         room.removePlayer(conn.playerId)
         room.broadcast({ type: 'player_left', payload: { playerId: conn.playerId } })
+        room.broadcast({ type: 'state', payload: { roomId: room.id, mode: room.mode, difficulty: room.difficulty, phase: room.phase, players: room.players, creatorId: room.creatorId } })
         if (room.players.length === 0) {
           const rid = msg.payload.roomId
           setTimeout(() => { const r = rooms.get(rid); if (r && r.players.length === 0) rooms.delete(rid) }, 300000)
