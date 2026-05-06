@@ -39,22 +39,26 @@ export default function LobbyPage() {
       setRooms(payload.rooms)
     }
     function handleRoomCreated(payload: any) {
+      setPlayerId(payload.myPlayerId)
       navigate(`/room/${payload.roomId}`, {
         state: {
           mode: payload.mode,
           difficulty: payload.difficulty,
           players: payload.players,
           creatorId: payload.creatorId,
+          myPlayerId: payload.myPlayerId,
         },
       })
     }
     function handleRoomJoined(payload: any) {
+      setPlayerId(payload.myPlayerId)
       navigate(`/room/${payload.roomId}`, {
         state: {
           mode: payload.mode,
           difficulty: payload.difficulty,
           players: payload.players,
           creatorId: payload.creatorId,
+          myPlayerId: payload.myPlayerId,
         },
       })
     }

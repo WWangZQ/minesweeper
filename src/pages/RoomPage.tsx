@@ -46,6 +46,9 @@ export default function RoomPage() {
       setDifficulty(navState.difficulty || '')
       setCreatorId(navState.creatorId || '')
       setGamePlayers(navState.players || [])
+      if (navState.myPlayerId) {
+        setMyPlayerId(navState.myPlayerId)
+      }
     }
 
     function handleRoomJoined(payload: any) {
