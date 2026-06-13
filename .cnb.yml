@@ -1,3 +1,6 @@
+# CNB 云原生配置 — minesweeper
+
+# 云端开发环境：任意分支可在 CNB 网页打开在线 VSCode（保留默认）
 $:
   vscode:
     - runner:
@@ -8,3 +11,20 @@ $:
       stages:
         - name: ls
           script: ls -al
+
+# 构建流水线：push 到 main 时，用项目 Dockerfile 构建生产镜像并推送到 CNB Docker 制品库
+main:
+  push:
+    - name: build-and-push
+      runner:
+        cpus: 1
+      services:
+        - docker
+      stages:
+        - name: 登录 CNB 制品库
+          script: docker login "$CNB_DOCKER_REGISTRY" -u cnb -p "$CNB_TOKEN"
+        - name: 构建镜像
+          # Dockerfile 内部已执行 npm ci + npm run build（多阶段构建，产物镜像监听 3001）
+          script: docker build -t "$CNB_DOCKER_REGISTRY/$CNB_REPO_SLUG_LOWERCASE:latest" .
+        - name: 推送镜像
+          script: docker push "$CNB_DOCKER_REGISTRY/$CNB_REPO_SLUG_LOWERCASE:latest"
