@@ -11,6 +11,7 @@ export default defineConfig({
     },
   },
   server: {
+    host: true, // 监听 0.0.0.0，云端开发环境(CNB)端口转发才能访问
     proxy: {
       '/ws': {
         target: 'http://localhost:3001',
