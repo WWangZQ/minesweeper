@@ -1,16 +1,22 @@
 # CNB 云原生配置 — minesweeper
 
-# 云端开发环境：任意分支可在 CNB 网页打开在线 VSCode（保留默认）
+# 云端开发环境：任意分支可在 CNB 网页打开在线 VSCode
+# 用 node:20 作为环境镜像，这样云端终端自带 node / npm
 $:
   vscode:
-    - runner:
+    - docker:
+        image: node:20
+      runner:
         cpus: 1
       services:
         - vscode
         - docker
       stages:
-        - name: ls
-          script: ls -al
+        # 进入环境时自动装好依赖，省得每次手动 npm install
+        - name: 安装依赖
+          script: npm install
+        - name: 版本信息
+          script: node -v && npm -v
 
 # 构建流水线：push 到 main 时，用项目 Dockerfile 构建生产镜像并推送到 CNB Docker 制品库
 main:
