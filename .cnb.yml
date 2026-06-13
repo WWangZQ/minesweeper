@@ -1,0 +1,10 @@
+$:
+  vscode:
+    - runner:
+        cpus: 1
+      services:
+        - vscode
+        - docker
+      stages:
+        - name: ls
+          script: ls -al
